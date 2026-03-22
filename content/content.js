@@ -375,12 +375,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         const title = getConversationTitle();
         const filename = sanitizeFilename(title) + '.md';
 
-        if (mode === 'clipboard') {
-          await navigator.clipboard.writeText(markdown);
-          sendResponse({ status: 'done', mode: 'clipboard', turnCount: turns.length });
-        } else {
-          sendResponse({ status: 'done', mode: 'download', markdown, filename, turnCount: turns.length });
-        }
+        // Always return markdown; popup handles clipboard write (page loses focus when popup opens)
+        sendResponse({ status: 'done', mode, markdown, filename, turnCount: turns.length });
       } catch (err) {
         sendResponse({ error: err.message });
       }

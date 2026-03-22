@@ -137,7 +137,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const count = response.turnCount ? `（共 ${response.turnCount} 轮对话）` : '';
 
     if (mode === 'clipboard') {
-      setStatus(`已复制到剪贴板 ${count}`);
+      try {
+        await navigator.clipboard.writeText(response.markdown);
+        setStatus(`已复制到剪贴板 ${count}`);
+      } catch (err) {
+        setError('复制失败：' + err.message);
+      }
     } else {
       // Relay markdown to service worker for chrome.downloads API
       chrome.runtime.sendMessage({
