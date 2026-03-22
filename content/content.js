@@ -90,12 +90,36 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Find the actual scrollable ancestor of the conversation turns
+function findScrollContainer() {
+  // Prefer the explicit chat container selectors
+  const candidate = queryFirst(SELECTORS.chatContainer);
+  if (candidate && candidate.scrollHeight > candidate.clientHeight) return candidate;
+
+  // Walk up from the first turn to find a scrollable ancestor
+  const firstTurn = queryFirst(SELECTORS.conversationTurn);
+  if (firstTurn) {
+    let el = firstTurn.parentElement;
+    while (el && el !== document.body) {
+      if (el.scrollHeight > el.clientHeight + 10) return el;
+      el = el.parentElement;
+    }
+  }
+
+  // Fall back to documentElement (window scroll)
+  return document.documentElement;
+}
+
+function triggerScrollEvent(container) {
+  container.dispatchEvent(new Event('scroll', { bubbles: true }));
+  window.dispatchEvent(new Event('scroll'));
+}
+
 async function loadAllMessages(onProgress) {
-  const container = queryFirst(SELECTORS.chatContainer);
-  if (!container) throw new Error('找不到对话容器，请确认当前页面是 Gemini 对话页面。');
+  const container = findScrollContainer();
 
   const MAX_ATTEMPTS = 40;
-  const SCROLL_DELAY_MS = 1200;
+  const SCROLL_DELAY_MS = 900;
   const STABLE_THRESHOLD = 3;
 
   let stableCount = 0;
@@ -104,6 +128,7 @@ async function loadAllMessages(onProgress) {
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS && stableCount < STABLE_THRESHOLD; attempt++) {
     container.scrollTop = 0;
+    triggerScrollEvent(container);
     await sleep(SCROLL_DELAY_MS);
 
     const currentCount = queryAll(SELECTORS.conversationTurn).length;
@@ -117,8 +142,8 @@ async function loadAllMessages(onProgress) {
     if (onProgress) onProgress(currentCount);
   }
 
-  // Restore user's scroll position
   container.scrollTop = savedScrollTop;
+  triggerScrollEvent(container);
   return lastTurnCount;
 }
 
