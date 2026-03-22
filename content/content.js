@@ -122,10 +122,11 @@ async function loadAllMessages(onProgress) {
   const SCROLL_DELAY_MS = 900;
   const STABLE_THRESHOLD = 3;
 
-  let stableCount = 0;
-  let lastTurnCount = 0;
   const savedScrollTop = container.scrollTop;
 
+  // Pass 1: scroll to top to load older messages
+  let stableCount = 0;
+  let lastTurnCount = 0;
   for (let attempt = 0; attempt < MAX_ATTEMPTS && stableCount < STABLE_THRESHOLD; attempt++) {
     container.scrollTop = 0;
     triggerScrollEvent(container);
@@ -138,7 +139,23 @@ async function loadAllMessages(onProgress) {
       stableCount = 0;
       lastTurnCount = currentCount;
     }
+    if (onProgress) onProgress(currentCount);
+  }
 
+  // Pass 2: scroll to bottom to load newer messages below original position
+  stableCount = 0;
+  for (let attempt = 0; attempt < MAX_ATTEMPTS && stableCount < STABLE_THRESHOLD; attempt++) {
+    container.scrollTop = container.scrollHeight;
+    triggerScrollEvent(container);
+    await sleep(SCROLL_DELAY_MS);
+
+    const currentCount = queryAll(SELECTORS.conversationTurn).length;
+    if (currentCount === lastTurnCount) {
+      stableCount++;
+    } else {
+      stableCount = 0;
+      lastTurnCount = currentCount;
+    }
     if (onProgress) onProgress(currentCount);
   }
 
