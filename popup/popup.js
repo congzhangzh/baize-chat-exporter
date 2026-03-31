@@ -162,7 +162,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const scrollFirst       = optScroll.checked;
     const includeImages     = optImages.checked;
     const includeRemoteImages = optRemoteImg.checked;
-    const useZip            = optZip.checked && includeImages;
+    // ZIP only applies to download mode; clipboard always uses inline (data URLs)
+    const useZip            = optZip.checked && includeImages && mode === 'download';
     const imageMode         = useZip ? 'extract' : 'inline';
 
     const loadingMsg = scrollFirst

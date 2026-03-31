@@ -1,6 +1,6 @@
 # Gemini Chat Exporter
 
-> 一键把 Gemini 多模态对话导出为 Markdown，轻松喂给 Claude 继续分析。
+> 一键把 Gemini 多模态对话导出为 Markdown，**包括用户上传的图片**，轻松喂给 Claude 继续分析。
 
 ---
 
@@ -16,7 +16,9 @@
 
 典型的工作流：用 Gemini 分析一张复杂架构图或医学影像，得到详细解读；然后想把整个对话拿给 Claude 做进一步推理——**但 Gemini 没有全文复制功能**，你只能一段一段手动复制。
 
-这个插件解决这个痛点。
+更糟的是，用户上传的图片在 Gemini 里显示为 `blob:` 内存 URL，页面关了就没了。
+
+这个插件解决这两个痛点。
 
 ---
 
@@ -28,13 +30,32 @@
 ├─────────────────────────────────────┤
 │  ☑ 自动滚动加载全部消息              │
 │    取消则只导出当前可见内容           │
-│  ☑ 包含图片 URL                     │
+│  ☑ 包含图片                         │
+│    ☐ 下载远程图片                    │
+│      默认仅保存本地上传图片           │
+│    ☐ 打包为 ZIP                     │
+│      否则图片内联到 Markdown          │
 ├─────────────────────────────────────┤
 │  ⬇  下载 .md 文件                   │
 │  📋 复制到剪贴板                     │
 │                                     │
 │  ✓ 已复制到剪贴板（共 47 轮对话）    │
 └─────────────────────────────────────┘
+```
+
+### 两种图片导出模式
+
+**内联模式（默认）**：图片转为 `data:image/...;base64,...` 直接嵌入 Markdown。单文件，零依赖，直接粘贴到 Claude 即可。
+
+**ZIP 模式**：勾选「打包为 ZIP」后，下载结构如下：
+
+```
+conversation_title/
+├── conversation_title.md        ← Markdown（图片引用相对路径）
+└── images/
+    ├── image_001.png            ← 用户上传的图片
+    ├── image_002.jpg
+    └── image_003.webp           ← Gemini 生成的图片（需勾选「下载远程图片」）
 ```
 
 导出的 Markdown 长这样：
@@ -49,6 +70,8 @@
 ## You
 
 帮我分析这张 Transformer 架构图，重点讲 Attention 机制的数据流向。
+
+![上传的架构图](data:image/png;base64,iVBOR...)
 
 ---
 
@@ -67,14 +90,6 @@ $$\text{Attention}(Q,K,V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V$
 attn_output = F.scaled_dot_product_attention(q, k, v)
 ```
 
-![架构图标注版](https://lh3.googleusercontent.com/gg/abc123...)
-
----
-
-## You
-
-残差连接的作用是什么？
-
 ---
 ```
 
@@ -87,10 +102,12 @@ attn_output = F.scaled_dot_product_attention(q, k, v)
 ```
 Chrome Extension (Manifest V3)
 │
-├── content/content.js      ← 注入 Gemini 页面，提取 DOM + 转换 Markdown
-├── popup/popup.html|js     ← 弹窗 UI，收集选项，触发导出
-├── background/             ← Service Worker，调用 chrome.downloads API
-└── lib/turndown*.js        ← 打包的 HTML→Markdown 转换库（离线，无 CDN）
+├── content/content.js      ← 注入 Gemini 页面，提取 DOM + 解析 blob 图片 + 转换 Markdown
+├── popup/popup.html|js     ← 弹窗 UI，直接调用 chrome.downloads，ZIP 打包
+├── background/             ← Service Worker（MV3 占位，无业务逻辑）
+└── lib/
+    ├── turndown*.js        ← HTML→Markdown 转换库（离线，无 CDN）
+    └── jszip.min.js        ← ZIP 打包库（仅 popup 使用）
 ```
 
 ### 关键设计决策
@@ -136,9 +153,10 @@ Gemini 对长对话使用**虚拟滚动**——只渲染视口附近的消息，
 ```javascript
 const turns = queryAll(SELECTORS.conversationTurn);  // 找所有轮次容器
 turns.map(turn => ({
-  userText:  extractUserText(turn),      // 用户问题（纯文本）
-  modelHtml: extractModelHtml(turn),     // AI 回答（原始 HTML）
-  images:    extractImages(turn)         // 图片 URL 列表
+  userText:   extractUserText(turn),      // 用户问题（纯文本）
+  userImages: extractUserImages(turn),    // 用户上传的图片
+  modelHtml:  extractModelHtml(turn),     // AI 回答（原始 HTML）
+  images:     extractImages(turn)         // AI 回答中的图片
 }))
 ```
 
@@ -150,15 +168,37 @@ AI 回答的 HTML 包含代码块、表格、数学公式等复杂结构，直�
 - GFM 表格、删除线、任务列表（通过 turndown-plugin-gfm）
 - 过滤 Gemini 的引用标记（`[cite:...]`）和 UI 按钮节点
 
-**5. 大文件下载走 Service Worker**
+**5. Blob URL 图片抓取**
 
-`chrome.downloads` API 只在扩展上下文可用，Content Script 没有权限。弹窗将 Markdown 文本转发给 Service Worker，由后者编码为 Base64 Data URL 触发下载——对 Unicode（中文、emoji）做了正确处理：
+用户上传到 Gemini 的图片以 `blob:https://gemini.google.com/...` 显示。这是浏览器内存中的临时引用，**不在任何服务器上**，页面关闭即失效。
+
+Content Script 运行在与页面同 origin 的隔离世界中，可以直接 `fetch(blobUrl)` 拿到图片二进制数据，转为 base64 内联或提取为独立文件：
 
 ```javascript
-const bytes  = new TextEncoder().encode(markdown);  // UTF-8 字节
-const binary = Array.from(bytes, b => String.fromCharCode(b)).join('');
+async function fetchImageAsBase64(url) {
+  const response = await fetch(url);           // 从浏览器内存读取
+  const blob = await response.blob();
+  const buffer = await blob.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  // → { base64, mimeType }
+}
+```
+
+**6. Popup 直接下载，无需 Service Worker 中转**
+
+Popup 作为扩展页面拥有 `chrome.downloads` API 权限，直接调用即可。ZIP 打包使用 JSZip 库在 Popup 中完成：
+
+```javascript
+// Popup 直接下载 — 不经过 Service Worker
 const dataUrl = `data:text/markdown;charset=utf-8;base64,${btoa(binary)}`;
 chrome.downloads.download({ url: dataUrl, filename });
+
+// ZIP 模式 — 使用 JSZip 打包
+const zip = new JSZip();
+const folder = zip.folder(title);
+folder.file(title + '.md', markdown);
+const imgFolder = folder.folder('images');
+imgFolder.file('image_001.png', base64Data, { base64: true });
 ```
 
 ---
@@ -185,8 +225,10 @@ chrome.downloads.download({ url: dataUrl, filename });
 |------|------|
 | 导出完整长对话 | 保持「自动滚动」勾选，点击下载 |
 | 快速复制当前可见部分 | 取消勾选「自动滚动」，点击复制 |
-| 不需要图片，纯文字 | 取消勾选「包含图片 URL」|
-| 把导出内容给 Claude | 复制到剪贴板，直接粘贴到 Claude |
+| 不需要图片，纯文字 | 取消勾选「包含图片」|
+| 把导出内容给 Claude | 复制到剪贴板（图片自动内联），直接粘贴 |
+| 保存图片为独立文件 | 勾选「包含图片」+「打包为 ZIP」|
+| 包含 Gemini 生成的图片 | 勾选「下载远程图片」|
 
 偏好设置会自动保存，下次打开无需重新配置。
 
@@ -203,18 +245,19 @@ Gemini DOM 改版时，浏览器控制台会出现错误，或弹窗提示"未�
 ## 文件结构
 
 ```
-gemini_all_context/
+sorry_gemini/
 ├── manifest.json                   Chrome 扩展清单（MV3）
 ├── content/
-│   └── content.js                  核心：DOM 提取 + Markdown 转换 + 消息监听
+│   └── content.js                  核心：DOM 提取 + Blob 图片解析 + Markdown 转换
 ├── popup/
-│   ├── popup.html                  弹窗界面
-│   └── popup.js                    弹窗逻辑（选项、按钮、状态展示）
+│   ├── popup.html                  弹窗界面（含选项、按钮）
+│   └── popup.js                    弹窗逻辑（直接下载 + ZIP 打包）
 ├── background/
-│   └── service_worker.js           文件下载中继
+│   └── service_worker.js           MV3 占位（无业务逻辑）
 ├── lib/
 │   ├── turndown.min.js             HTML→Markdown（本地打包）
-│   └── turndown-plugin-gfm.min.js  GFM 扩展（表格、删除线等）
+│   ├── turndown-plugin-gfm.min.js  GFM 扩展（表格、删除线等）
+│   └── jszip.min.js                ZIP 打包（仅 popup 使用）
 └── icons/
     ├── icon16.png
     ├── icon48.png
@@ -227,4 +270,5 @@ gemini_all_context/
 
 - [Turndown](https://github.com/mixmark-io/turndown) — HTML to Markdown 转换
 - [turndown-plugin-gfm](https://github.com/mixmark-io/turndown-plugin-gfm) — GitHub Flavored Markdown 支持
+- [JSZip](https://stuk.github.io/jszip/) — ZIP 文件生成
 - 灵感来自 [gemini-export](https://github.com/jujusharp/gemini-export) 和 [ai-chat-exporter](https://github.com/amazingpaddy/ai-chat-exporter)

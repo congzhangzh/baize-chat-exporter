@@ -197,27 +197,32 @@ Content Script 运行在与页面 JS 隔离的环境中：
 └────────────────────────────────────────────────────────────┘
 ```
 
-### 3.2 本项目的完整通信链路
+### 3.2 本项目的完整通信链路（优化后）
 
 ```
-① Popup                   ② Content Script            ③ Service Worker
-   │                            │                           │
-   │── tabs.sendMessage ──►     │                           │
-   │   {action:'PING'}          │                           │
-   │                            │                           │
-   │◄── sendResponse ─────      │                           │
-   │   {ready: true}            │                           │
-   │                            │                           │
-   │── tabs.sendMessage ──►     │                           │
-   │   {action:'EXPORT',...}    │                           │
-   │                            │ (提取DOM, 滚动, 转MD)     │
-   │◄── sendResponse ─────      │                           │
-   │   {markdown, filename}     │                           │
-   │                            │                           │
-   │── runtime.sendMessage ─────────────────────────────►   │
-   │   {action:'DOWNLOAD',      │                           │
-   │    markdown, filename}     │               chrome.downloads.download()
+① Popup                        ② Content Script
+   │                                 │
+   │── tabs.sendMessage ──►          │
+   │   {action:'PING'}               │
+   │                                 │
+   │◄── sendResponse ─────           │
+   │   {ready: true}                 │
+   │                                 │
+   │── tabs.sendMessage ──►          │
+   │   {action:'EXPORT',             │
+   │    imageMode:'inline'|'extract',│
+   │    includeRemoteImages}         │
+   │                                 │ (滚动, 提取DOM, 解析blob图片, 转MD)
+   │◄── sendResponse ─────           │
+   │   {markdown, extractedImages[]} │
+   │                                 │
+   ├─ clipboard → writeText(markdown)
+   ├─ download .md → chrome.downloads.download() (直接)
+   └─ download .zip → JSZip 打包 → chrome.downloads.download()
 ```
+
+> [!NOTE]
+> 优化后不再经过 Service Worker。Popup 直接调用 `chrome.downloads` API。
 
 ### 3.3 异步响应的关键机制
 
@@ -240,18 +245,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 **官方参考**:
 [Message passing — Simple one-time requests](https://developer.chrome.com/docs/extensions/develop/concepts/messaging#simple)
 
-### 3.4 设计反思：本项目中 Service Worker 的必要性
+### 3.4 设计实践：Service Worker 已移除
 
-| 路径                                | 可行性          | 说明                                             |
-| ----------------------------------- | --------------- | ------------------------------------------------ |
-| Popup → SW → `chrome.downloads`     | ✅ 当前方案     | 绕了一圈，但可工作                               |
-| Popup 直接调用 `chrome.downloads`   | ✅ **完全可行** | Popup 作为扩展页面，拥有 `chrome.downloads` 权限 |
-| Content Script → `<a>` 下载         | ⚠️ 可行但不优雅 | 不走下载管理器                                   |
-| Content Script → `chrome.downloads` | ❌ 不可行       | Content Script 没有这个 API                      |
+| 路径                                | 状态 | 说明                                             |
+| ----------------------------------- | ---- | ------------------------------------------------ |
+| ~~Popup → SW → `chrome.downloads`~~ | ❌ 已移除 | 不必要的中转                                 |
+| **Popup 直接调用 `chrome.downloads`** | ✅ **当前方案** | Popup 拥有 `chrome.downloads` 权限 |
+| Content Script → `<a>` 下载         | ⚠️ 可行但不优雅 | 不走下载管理器                             |
+| Content Script → `chrome.downloads` | ❌ 不可行       | Content Script 没有这个 API                |
 
 > [!TIP]
-> 本项目的 Service Worker 可以简化为空文件（MV3
-> 要求必须声明但不要求有实际逻辑）。下载功能可以直接在 Popup 中完成。
+> **已实施**：Service Worker 已清空为 MV3 占位文件。所有下载功能由 Popup 直接完成。
+> ZIP 打包使用 JSZip 库在 Popup 中进行。
 
 ---
 
@@ -376,22 +381,21 @@ const dataUrl = await blobUrlToDataUrl("blob:https://gemini.google.com/xxx");
 
 ---
 
-## 6. 本项目数据流完整图
+## 6. 本项目数据流完整图（优化后）
 
 ```mermaid
 sequenceDiagram
     participant U as 用户
     participant P as Popup (popup.js)
     participant CS as Content Script (content.js)
-    participant SW as Service Worker
     participant DOM as Gemini 页面 DOM
 
     U->>P: 点击扩展图标
     P->>CS: tabs.sendMessage({action:'PING'})
     CS-->>P: {ready: true}
 
-    U->>P: 点击"下载 .md"
-    P->>CS: tabs.sendMessage({action:'EXPORT', options})
+    U->>P: 点击"下载"
+    P->>CS: tabs.sendMessage({action:'EXPORT', imageMode, includeRemoteImages})
 
     alt 需要滚动加载
         CS->>DOM: scrollTop = 0 (循环滚动)
@@ -402,20 +406,36 @@ sequenceDiagram
     DOM-->>CS: 对话轮次 DOM 节点
 
     loop 每个轮次
-        CS->>DOM: extractUserText() / extractModelHtml()
-        CS->>DOM: extractImages() (含 blob URL)
+        CS->>DOM: extractUserText() / extractUserImages()
+        CS->>DOM: extractModelHtml() / extractImages()
     end
 
-    CS->>CS: Turndown 转为 Markdown
-    CS-->>P: {markdown, filename, turnCount}
+    alt imageMode = 'inline'
+        CS->>CS: fetch(blob URL) → data URL 嵌入
+        CS-->>P: {markdown (含内联图片)}
+    else imageMode = 'extract'
+        CS->>CS: fetch(blob URL) → base64 提取
+        CS-->>P: {markdown (相对路径), extractedImages[]}
+    end
 
-    alt clipboard 模式
+    alt clipboard 模式（始终 inline）
         P->>P: navigator.clipboard.writeText(markdown)
-    else download 模式
-        P->>SW: runtime.sendMessage({action:'DOWNLOAD'})
-        SW->>SW: Base64 编码 → Data URL
-        SW->>SW: chrome.downloads.download()
+    else download .md
+        P->>P: chrome.downloads.download(dataUrl)
+    else download .zip
+        P->>P: JSZip 打包 → chrome.downloads.download(zipUrl)
     end
+```
+
+### ZIP 内部结构
+
+```
+conversation_title/
+├── conversation_title.md        ← Markdown（图片引用 images/xxx.png）
+└── images/
+    ├── image_001.png            ← 用户上传的 blob 图片
+    ├── image_002.jpg
+    └── image_003.webp           ← 远程图片（需勾选「下载远程图片」）
 ```
 
 ---
@@ -437,68 +457,69 @@ sequenceDiagram
 | **Permissions List**          | https://developer.chrome.com/docs/extensions/reference/permissions-list                 |
 | **Blob URL (MDN)**            | https://developer.mozilla.org/en-US/docs/Web/API/URL/createObjectURL_static             |
 | **URL.revokeObjectURL (MDN)** | https://developer.mozilla.org/en-US/docs/Web/API/URL/revokeObjectURL_static             |
+| **JSZip**                     | https://stuk.github.io/jszip/                                                           |
 
 ---
 
-## 8. 改进建议
+## 8. 已完成的优化
 
-### 8.1 简化下载路径
+### 8.1 ✅ 简化下载路径
 
-当前下载路径：Popup → Service Worker → chrome.downloads，可以简化为 Popup
-直接调用：
-
-```diff
-// popup.js
-- chrome.runtime.sendMessage({
--   action: 'DOWNLOAD',
--   markdown: response.markdown,
--   filename: response.filename
-- });
-+ const bytes = new TextEncoder().encode(response.markdown);
-+ const binary = Array.from(bytes, b => String.fromCharCode(b)).join('');
-+ const dataUrl = `data:text/markdown;charset=utf-8;base64,${btoa(binary)}`;
-+ chrome.downloads.download({ url: dataUrl, filename: response.filename });
-```
-
-### 8.2 增加 Blob URL 图片导出
-
-在 Content Script 中增加 blob URL 检测和转换逻辑：
+已移除 Service Worker 中转。Popup 直接调用 `chrome.downloads`：
 
 ```javascript
-// content.js — extractImages 增强
-async function resolveBlobUrl(url) {
-    if (!url.startsWith("blob:")) return url;
-    try {
-        const response = await fetch(url);
-        const blob = await response.blob();
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.onerror = () => resolve(url); // fallback
-            reader.readAsDataURL(blob);
-        });
-    } catch {
-        return url; // fallback to original
-    }
+// popup.js — 直接下载，无需 Service Worker
+const bytes = new TextEncoder().encode(response.markdown);
+const binary = Array.from(bytes, b => String.fromCharCode(b)).join('');
+const dataUrl = `data:text/markdown;charset=utf-8;base64,${btoa(binary)}`;
+chrome.downloads.download({ url: dataUrl, filename: response.filename });
+```
+
+### 8.2 ✅ Blob URL 图片导出
+
+Content Script 中已实现完整的 blob URL 解析链路：
+
+```javascript
+// content.js — fetchImageAsBase64
+async function fetchImageAsBase64(url) {
+  const response = await fetch(url);
+  const blob = await response.blob();
+  const buffer = await blob.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return { base64: btoa(binary), mimeType: mimeFromBlob(blob) };
 }
 ```
 
-### 8.3 考虑使用 Canvas 作为 Blob URL 降级方案
+支持两种模式：
+- **Inline**：`resolveImagesInline()` — 将 blob URL 替换为 data URL 嵌入 markdown
+- **Extract**：`resolveImagesExtract()` — 提取图片为独立文件 + 使用相对路径
 
-如果 `fetch(blobUrl)` 因 CORS 策略受限（理论上不应该，但作为防御性编程）：
+### 8.3 ✅ ZIP 打包
+
+使用 JSZip 库在 Popup 中打包 markdown + 图片到同名子目录：
 
 ```javascript
-async function imgToDataUrl(imgElement) {
-    const canvas = document.createElement("canvas");
-    canvas.width = imgElement.naturalWidth;
-    canvas.height = imgElement.naturalHeight;
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(imgElement, 0, 0);
-    return canvas.toDataURL("image/png");
+// popup.js — buildZip
+const zip = new JSZip();
+const folder = zip.folder(filenameBase);
+folder.file(filenameBase + '.md', markdown);
+const imgFolder = folder.folder('images');
+for (const img of extractedImages) {
+  imgFolder.file(img.filename, img.base64, { base64: true });
 }
 ```
 
-> [!WARNING]
-> Canvas 方案受 taint 限制：如果 `<img>` 的 src 是跨域的且没有 CORS
-> 头，`canvas.toDataURL()` 会抛出 SecurityError。但对于 blob
-> URL（同源），此限制不适用。
+### 8.4 ✅ 复制到剪贴板始终内联
+
+无论是否勾选「打包为 ZIP」，复制到剪贴板都使用 inline 模式（data URL 内嵌），
+因为相对路径在剪贴板中毫无意义。
+
+### 8.5 未来可考虑的改进
+
+- **Canvas 降级方案**：如果 `fetch(blobUrl)` 因 CORS 策略受限，可使用 `canvas.drawImage()` + `canvas.toDataURL()` 作为 fallback（对 blob URL 不受 taint 限制）
+- **进度回调**：大量图片时提供下载进度显示
+- **图片压缩**：可选对大图进行 WebP 压缩以减小文件体积
