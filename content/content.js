@@ -55,6 +55,13 @@ const SELECTORS = {
     '.generated-images img[src]',
     'model-response img[src]',
     'message-content img[src]'
+  ],
+  userUploadedImages: [
+    'user-query img[src]',
+    'query-content img[src]',
+    '.query-image img[src]',
+    '.uploaded-image img[src]',
+    '[data-test-id="user-query"] img[src]'
   ]
 };
 
@@ -165,6 +172,62 @@ async function loadAllMessages(onProgress) {
 }
 
 // ----------------------------------------------------------
+// Image URL resolution — fetch blob: / https: URLs to base64
+// ----------------------------------------------------------
+
+/**
+ * Detect MIME type from blob or URL, fallback to 'image/png'.
+ */
+function mimeFromBlob(blob) {
+  if (blob.type && blob.type.startsWith('image/')) return blob.type;
+  return 'image/png';
+}
+
+function extensionFromMime(mime) {
+  const map = {
+    'image/png': 'png',
+    'image/jpeg': 'jpg',
+    'image/gif': 'gif',
+    'image/webp': 'webp',
+    'image/svg+xml': 'svg',
+    'image/bmp': 'bmp'
+  };
+  return map[mime] || 'png';
+}
+
+/**
+ * Fetch a URL (blob: or https:) and convert to { base64, mimeType }.
+ * Returns null on failure.
+ */
+async function fetchImageAsBase64(url) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    const mimeType = mimeFromBlob(blob);
+    const buffer = await blob.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const base64 = btoa(binary);
+    return { base64, mimeType };
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * Convert a URL to a data URL string. Returns original URL on failure.
+ */
+async function urlToDataUrl(url) {
+  const result = await fetchImageAsBase64(url);
+  if (!result) return url;
+  return `data:${result.mimeType};base64,${result.base64}`;
+}
+
+// ----------------------------------------------------------
 // Extraction
 // ----------------------------------------------------------
 function extractUserText(userEl) {
@@ -190,20 +253,28 @@ function extractModelHtml(modelEl) {
   return clone.innerHTML;
 }
 
-function extractImages(modelEl, includeImages) {
-  if (!includeImages) return [];
-
+/**
+ * Extract images from an element using given selector list.
+ * Returns array of { url, alt }.
+ */
+function extractImagesFromElement(el, selectorList) {
   const found = [];
   const seen = new Set();
 
-  for (const sel of SELECTORS.generatedImages) {
+  for (const sel of selectorList) {
     try {
-      const imgs = modelEl.querySelectorAll(sel);
+      const imgs = el.querySelectorAll(sel);
       imgs.forEach(img => {
         const src = img.currentSrc || img.getAttribute('src') || '';
         if (!src || seen.has(src)) return;
         // Skip tiny data URIs (icons / spinners, usually < 300 chars)
         if (src.startsWith('data:') && src.length < 300) return;
+        // Skip already-embedded large data URIs (don't re-process)
+        if (src.startsWith('data:') && src.length >= 300) {
+          seen.add(src);
+          found.push({ url: src, alt: img.getAttribute('alt') || 'Image' });
+          return;
+        }
         try {
           const abs = new URL(src, window.location.href).href;
           seen.add(src);
@@ -214,6 +285,16 @@ function extractImages(modelEl, includeImages) {
   }
 
   return found;
+}
+
+function extractImages(modelEl, includeImages) {
+  if (!includeImages) return [];
+  return extractImagesFromElement(modelEl, SELECTORS.generatedImages);
+}
+
+function extractUserImages(userEl, includeImages) {
+  if (!includeImages) return [];
+  return extractImagesFromElement(userEl, SELECTORS.userUploadedImages);
 }
 
 function extractConversation(includeImages) {
@@ -230,6 +311,7 @@ function extractConversation(includeImages) {
     return {
       index,
       userText: userEl ? extractUserText(userEl) : null,
+      userImages: userEl ? extractUserImages(userEl, includeImages) : [],
       modelHtml: modelEl ? extractModelHtml(modelEl) : null,
       images: modelEl ? extractImages(modelEl, includeImages) : []
     };
@@ -254,7 +336,13 @@ function extractConversationFallback(includeImages) {
   for (const { type, el } of allNodes) {
     if (type === 'user') {
       if (currentTurn) turns.push(currentTurn);
-      currentTurn = { index: turns.length, userText: extractUserText(el), modelHtml: null, images: [] };
+      currentTurn = {
+        index: turns.length,
+        userText: extractUserText(el),
+        userImages: extractUserImages(el, includeImages),
+        modelHtml: null,
+        images: []
+      };
     } else if (type === 'model' && currentTurn) {
       currentTurn.modelHtml = extractModelHtml(el);
       currentTurn.images = extractImages(el, includeImages);
@@ -263,6 +351,91 @@ function extractConversationFallback(includeImages) {
   if (currentTurn) turns.push(currentTurn);
 
   return turns.filter(t => t.userText || t.modelHtml);
+}
+
+// ----------------------------------------------------------
+// Image resolution for different export modes
+// ----------------------------------------------------------
+
+/**
+ * Classify whether a URL is local (blob:) or remote (https:).
+ */
+function isLocalUrl(url) {
+  return url.startsWith('blob:') || url.startsWith('data:');
+}
+
+/**
+ * Resolve images in all turns for INLINE mode.
+ * Modifies image URLs in-place to data URLs.
+ */
+async function resolveImagesInline(turns, includeRemoteImages) {
+  for (const turn of turns) {
+    const allImages = [...(turn.userImages || []), ...(turn.images || [])];
+    for (const img of allImages) {
+      if (img.url.startsWith('data:')) continue; // already inline
+
+      const shouldResolve =
+        img.url.startsWith('blob:') ||
+        (includeRemoteImages && img.url.startsWith('http'));
+
+      if (shouldResolve) {
+        img.url = await urlToDataUrl(img.url);
+      }
+    }
+  }
+}
+
+/**
+ * Resolve images in all turns for EXTRACT mode (ZIP packaging).
+ * Returns array of { filename, base64, mimeType }.
+ * Modifies image URLs in-place to relative paths.
+ */
+async function resolveImagesExtract(turns, includeRemoteImages) {
+  const extractedImages = [];
+  let imageIndex = 0;
+
+  for (const turn of turns) {
+    const allImageSets = [
+      { images: turn.userImages || [], prefix: 'user' },
+      { images: turn.images || [], prefix: 'model' }
+    ];
+
+    for (const { images } of allImageSets) {
+      for (const img of images) {
+        if (img.url.startsWith('data:')) {
+          // Already a data URL — extract it
+          const match = img.url.match(/^data:(image\/[^;]+);base64,(.+)$/);
+          if (match) {
+            imageIndex++;
+            const mimeType = match[1];
+            const ext = extensionFromMime(mimeType);
+            const filename = `image_${String(imageIndex).padStart(3, '0')}.${ext}`;
+            extractedImages.push({ filename, base64: match[2], mimeType });
+            img.url = `images/${filename}`;
+          }
+          continue;
+        }
+
+        const shouldResolve =
+          img.url.startsWith('blob:') ||
+          (includeRemoteImages && img.url.startsWith('http'));
+
+        if (shouldResolve) {
+          const result = await fetchImageAsBase64(img.url);
+          if (result) {
+            imageIndex++;
+            const ext = extensionFromMime(result.mimeType);
+            const filename = `image_${String(imageIndex).padStart(3, '0')}.${ext}`;
+            extractedImages.push({ filename, base64: result.base64, mimeType: result.mimeType });
+            img.url = `images/${filename}`;
+          }
+          // If fetch failed, keep original URL
+        }
+      }
+    }
+  }
+
+  return extractedImages;
 }
 
 // ----------------------------------------------------------
@@ -354,7 +527,7 @@ function cleanMarkdown(text) {
     .trim();
 }
 
-function buildMarkdown(turns, td, includeImages) {
+function buildMarkdown(turns, td) {
   const title = getConversationTitle();
   const date = new Date().toISOString().split('T')[0];
 
@@ -366,6 +539,14 @@ function buildMarkdown(turns, td, includeImages) {
     if (turn.userText) {
       md += `## You\n\n`;
       md += `${turn.userText.trim()}\n\n`;
+
+      // User-uploaded images
+      if (turn.userImages && turn.userImages.length > 0) {
+        turn.userImages.forEach(img => {
+          md += `![${img.alt}](${img.url})\n\n`;
+        });
+      }
+
       md += `---\n\n`;
     }
 
@@ -374,7 +555,7 @@ function buildMarkdown(turns, td, includeImages) {
       let responseText = cleanMarkdown(td.turndown(turn.modelHtml));
       md += `${responseText}\n\n`;
 
-      if (includeImages && turn.images.length > 0) {
+      if (turn.images && turn.images.length > 0) {
         turn.images.forEach(img => {
           md += `![${img.alt}](${img.url})\n\n`;
         });
@@ -397,7 +578,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message.action === 'EXPORT') {
-    const { mode, includeImages, scrollFirst } = message.options;
+    const {
+      mode,
+      includeImages,
+      scrollFirst,
+      imageMode = 'inline',         // 'inline' | 'extract'
+      includeRemoteImages = false
+    } = message.options;
 
     (async () => {
       try {
@@ -413,12 +600,33 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           return;
         }
 
-        const markdown = buildMarkdown(turns, td, includeImages);
         const title = getConversationTitle();
-        const filename = sanitizeFilename(title) + '.md';
+        const filenameBase = sanitizeFilename(title);
 
-        // Always return markdown; popup handles clipboard write (page loses focus when popup opens)
-        sendResponse({ status: 'done', mode, markdown, filename, turnCount: turns.length });
+        let extractedImages = [];
+
+        if (includeImages) {
+          if (imageMode === 'extract') {
+            // ZIP mode: resolve images, get separate files, use relative paths in markdown
+            extractedImages = await resolveImagesExtract(turns, includeRemoteImages);
+          } else {
+            // Inline mode: resolve blob/remote URLs to data URLs in-place
+            await resolveImagesInline(turns, includeRemoteImages);
+          }
+        }
+
+        const markdown = buildMarkdown(turns, td);
+
+        sendResponse({
+          status: 'done',
+          mode,
+          markdown,
+          filename: filenameBase + (imageMode === 'extract' ? '.zip' : '.md'),
+          filenameBase,
+          turnCount: turns.length,
+          extractedImages: imageMode === 'extract' ? extractedImages : [],
+          imageMode
+        });
       } catch (err) {
         sendResponse({ error: err.message });
       }

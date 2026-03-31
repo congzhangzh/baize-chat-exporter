@@ -65,6 +65,17 @@
       margin-top: 1px;
     }
 
+    .sub-options {
+      margin-left: 23px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .sub-options.hidden {
+      display: none;
+    }
+
     .divider {
       height: 1px;
       background: #45475a;
@@ -150,7 +161,23 @@
     </div>
     <div class="option-row">
       <input type="checkbox" id="opt-images" checked>
-      <label for="opt-images">包含图片 URL</label>
+      <label for="opt-images">包含图片</label>
+    </div>
+    <div class="sub-options" id="image-sub-options">
+      <div class="option-row">
+        <input type="checkbox" id="opt-remote-images">
+        <div>
+          <label for="opt-remote-images">下载远程图片</label>
+          <div class="hint">默认仅保存本地上传图片</div>
+        </div>
+      </div>
+      <div class="option-row">
+        <input type="checkbox" id="opt-zip">
+        <div>
+          <label for="opt-zip">打包为 ZIP</label>
+          <div class="hint">否则图片内联到 Markdown</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -160,7 +187,7 @@
       <polyline points="7 10 12 15 17 10"/>
       <line x1="12" y1="15" x2="12" y2="3"/>
     </svg>
-    下载 .md 文件
+    <span id="btn-download-text">下载 .md 文件</span>
   </button>
 
   <button class="btn" id="btn-clipboard">
@@ -176,6 +203,7 @@
     <div id="error"></div>
   </div>
 
+  <script src="../lib/jszip.min.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
