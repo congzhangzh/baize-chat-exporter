@@ -137,6 +137,29 @@
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    .slogan {
+      font-size: 11px;
+      color: #7f849c;
+      margin-top: -8px;
+      margin-bottom: 12px;
+      line-height: 1.4;
+    }
+
+    .sponsor-row {
+      margin-top: 10px;
+      font-size: 11px;
+      color: #6c7086;
+      text-align: center;
+    }
+
+    .sponsor-row a {
+      color: #6c7086;
+      text-decoration: none;
+      margin: 0 4px;
+    }
+
+    .sponsor-row a:hover { color: #cba6f7; }
+
     /* Sites config */
     details.sites-section {
       background: #313244;
@@ -289,6 +312,8 @@
     <span class="site-pill inactive" id="active-site">未识别站点</span>
   </div>
 
+  <div class="slogan">汲百家所长，长出你自己的智慧 · Draw from every AI; grow your own intelligence</div>
+
   <div class="options">
     <div class="option-row">
       <input type="checkbox" id="opt-scroll" checked>
@@ -315,6 +340,13 @@
           <label for="opt-zip">打包为 ZIP</label>
           <div class="hint">否则图片内联到 Markdown</div>
         </div>
+      </div>
+    </div>
+    <div class="option-row">
+      <input type="checkbox" id="opt-spool">
+      <div>
+        <label for="opt-spool">同步写入 spool 桶</label>
+        <div class="hint">额外存一份 .md 到 Downloads/ai-chat-spool/，供 MCP 读取</div>
       </div>
     </div>
   </div>
@@ -348,6 +380,13 @@
     </summary>
     <div id="sites-list"></div>
   </details>
+
+  <div class="sponsor-row">
+    支持作者：
+    <a href="https://github.com/sponsors/congzhangzh" data-sponsor target="_blank" rel="noopener">GitHub Sponsors</a>
+    ·
+    <a href="https://ko-fi.com/congzhangzh" data-sponsor target="_blank" rel="noopener">☕ Ko-fi</a>
+  </div>
 
   <script src="../lib/jszip.min.js"></script>
   <script src="popup.js"></script>

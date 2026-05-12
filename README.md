@@ -1,6 +1,8 @@
 # AI Chat Exporter
 
-> One-click export for conversations from **Gemini, ChatGPT, Claude, Meta AI, WhatsApp Web** (Meta AI or any contact), and **self-hosted OpenWebUI** — to clean, image-embedded Markdown.
+> **汲百家所长，长出你自己的智慧** · *Draw from every AI; grow your own intelligence.*
+
+One-click export for conversations from **Gemini, ChatGPT, Claude, Meta AI, WhatsApp Web** (Meta AI or any contact), and **self-hosted OpenWebUI** — to clean, image-embedded Markdown.
 
 Originally born as *Gemini Chat Exporter*. Now a generic per-site adapter framework: every site is a tiny adapter file. The next site you add is one `content/adapters/<name>.js` away.
 
@@ -186,6 +188,45 @@ Works on any Chromium browser: Chrome, Edge, Brave, Opera, Arc, Vivaldi — zero
 | Chrome, Edge, Brave, Opera, Arc, Vivaldi | ✅ Fully supported (MV3) |
 | Firefox | ⏳ Followup. See **Roadmap** below |
 | Safari | ❌ Different extension model (WKWebExtension) |
+
+---
+
+## Coming soon
+
+The framework already covers six sites. Additional adapters are intentionally added on demand — we'd rather ship two solid adapters than ten flaky ones. See [RELEASE_NOTES.md](RELEASE_NOTES.md) for the full per-site queue. Headline candidates:
+
+- 中文圈：豆包 · Kimi · 智谱清言 · 通义千问 · 文心一言 · 讯飞星火 · MiniMax 海螺 · 阶跃跃问 · 零一万物
+- 英文圈：HuggingChat · Perplexity · DeepSeek · Grok · Mistral Le Chat · Microsoft Copilot · Pi
+
+Want one of these prioritized? See [Sponsor a site](#sponsor-a-site) below.
+
+---
+
+## MCP integration (preview)
+
+Enable the **"同步写入 spool 桶"** checkbox in the popup. Every export then also writes a `.md` copy into `~/Downloads/ai-chat-spool/` with this naming scheme:
+
+```
+ai-chat-spool/
+├── 20260512T152930-chatgpt-Transformer架构分析.md
+├── 20260512T153140-gemini-神经网络数据流.md
+└── 20260512T153945-claude-代码审查记录.md
+```
+
+A separate **`ai-chat-mcp`** server (independent npm package, not yet shipped) will read this directory and expose three MCP tools — `list_conversations`, `read_conversation`, `search_conversations` — so Claude Code / Cursor / any MCP client can pull historical context across every AI you talk to.
+
+Why the file-system bucket instead of native messaging? Zero coupling: extension just writes files, MCP server just reads files, neither needs to know about the other. See [RELEASE_NOTES.md](RELEASE_NOTES.md) for the design sketch.
+
+---
+
+## Sponsor a site
+
+Token / attention budget is the bottleneck, not technical ability. If your favorite site is in *Coming soon* but not yet shipped, you can move it to the front of the queue by sponsoring:
+
+- [GitHub Sponsors](https://github.com/sponsors/congzhangzh) — recurring or one-time
+- [Ko-fi](https://ko-fi.com/congzhangzh) — one-time, no account required
+
+After sponsoring, open an issue tagged `sponsored-adapter` and tell me which site to pick up next. Sponsorship influences scheduling, not the open-source license; the extension stays MIT, no paywalled features.
 
 ---
 

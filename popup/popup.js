@@ -169,6 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const optImages      = document.getElementById('opt-images');
   const optRemoteImg   = document.getElementById('opt-remote-images');
   const optZip         = document.getElementById('opt-zip');
+  const optSpool       = document.getElementById('opt-spool');
   const imageSubOpts   = document.getElementById('image-sub-options');
   const activeSitePill = document.getElementById('active-site');
   const sitesSummary   = document.getElementById('sites-summary');
@@ -180,12 +181,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // Prefs persistence (legacy keys kept for compatibility)
   // --------------------------------------------------------
   chrome.storage.local.get(
-    ['includeImages', 'scrollFirst', 'includeRemoteImages', 'useZip'],
+    ['includeImages', 'scrollFirst', 'includeRemoteImages', 'useZip', 'spoolEnabled'],
     prefs => {
       if (prefs.includeImages !== undefined)       optImages.checked    = prefs.includeImages;
       if (prefs.scrollFirst  !== undefined)        optScroll.checked    = prefs.scrollFirst;
       if (prefs.includeRemoteImages !== undefined) optRemoteImg.checked = prefs.includeRemoteImages;
       if (prefs.useZip !== undefined)              optZip.checked       = prefs.useZip;
+      if (prefs.spoolEnabled !== undefined)        optSpool.checked     = prefs.spoolEnabled;
       updateExportUI();
     }
   );
@@ -195,7 +197,8 @@ document.addEventListener('DOMContentLoaded', () => {
       includeImages:       optImages.checked,
       scrollFirst:         optScroll.checked,
       includeRemoteImages: optRemoteImg.checked,
-      useZip:              optZip.checked
+      useZip:              optZip.checked,
+      spoolEnabled:        optSpool.checked
     });
   }
 
@@ -212,6 +215,16 @@ document.addEventListener('DOMContentLoaded', () => {
   optScroll.addEventListener('change',  savePrefs);
   optRemoteImg.addEventListener('change', savePrefs);
   optZip.addEventListener('change', () => { savePrefs(); updateExportUI(); });
+  optSpool.addEventListener('change', savePrefs);
+
+  // Sponsor links: open in a real tab. Anchor target="_blank" inside a popup
+  // frame can be auto-closed before the new tab loads on some Chromium builds.
+  document.querySelectorAll('a[data-sponsor]').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      chrome.tabs.create({ url: a.href });
+    });
+  });
 
   // --------------------------------------------------------
   // Status helpers
@@ -424,12 +437,39 @@ document.addEventListener('DOMContentLoaded', () => {
     return `data:${mimeType};charset=utf-8;base64,${btoa(binary)}`;
   }
 
-  function downloadFile(dataUrl, filename) {
-    chrome.downloads.download({ url: dataUrl, filename, saveAs: false }, () => {
+  function downloadFile(dataUrl, filename, opts = {}) {
+    const conflictAction = opts.conflictAction || 'uniquify';
+    chrome.downloads.download({ url: dataUrl, filename, saveAs: false, conflictAction }, () => {
       if (chrome.runtime.lastError) {
         console.error('[AI Exporter] Download failed:', chrome.runtime.lastError.message);
       }
     });
+  }
+
+  // ----------------------------------------------------------
+  // Spool bucket helpers
+  // ----------------------------------------------------------
+  function spoolTimestamp() {
+    return new Date().toISOString().replace(/[-:]/g, '').replace(/\..*/, '');
+  }
+
+  function sanitizeFilenameSegment(name) {
+    return (name || 'untitled')
+      .replace(/[<>:"/\\|?*\x00-\x1F]/g, '')
+      .replace(/\s+/g, '_')
+      .slice(0, 80) || 'untitled';
+  }
+
+  function buildSpoolFilename(response) {
+    const adapter = response.adapterId || 'unknown';
+    const base = sanitizeFilenameSegment(response.filenameBase);
+    return `ai-chat-spool/${spoolTimestamp()}-${adapter}-${base}.md`;
+  }
+
+  function spoolMarkdown(response) {
+    if (!response || !response.markdown) return;
+    const dataUrl = textToDataUrl(response.markdown);
+    downloadFile(dataUrl, buildSpoolFilename(response));
   }
 
   async function buildZip(filenameBase, markdown, extractedImages) {
@@ -531,10 +571,13 @@ document.addEventListener('DOMContentLoaded', () => {
       ? `，${response.extractedImages.length} 张图片`
       : '';
 
+    const spoolEnabled = optSpool.checked;
+
     if (mode === 'clipboard') {
       try {
         await navigator.clipboard.writeText(response.markdown);
-        setStatus(`已复制到剪贴板 ${count}`);
+        if (spoolEnabled) spoolMarkdown(response);
+        setStatus(`已复制到剪贴板 ${count}${spoolEnabled ? '，并写入 spool 桶' : ''}`);
       } catch (err) {
         setError('复制失败：' + err.message);
       }
@@ -548,11 +591,13 @@ document.addEventListener('DOMContentLoaded', () => {
             response.extractedImages
           );
           downloadFile(zipDataUrl, response.filenameBase + '.zip');
-          setStatus(`下载已开始 ${count}${imgCount}`);
+          if (spoolEnabled) spoolMarkdown(response);
+          setStatus(`下载已开始 ${count}${imgCount}${spoolEnabled ? '，并写入 spool 桶' : ''}`);
         } else {
           const dataUrl = textToDataUrl(response.markdown);
           downloadFile(dataUrl, response.filenameBase + '.md');
-          setStatus(`下载已开始 ${count}`);
+          if (spoolEnabled) spoolMarkdown(response);
+          setStatus(`下载已开始 ${count}${spoolEnabled ? '，并写入 spool 桶' : ''}`);
         }
       } catch (err) {
         setError('下载失败：' + err.message);

@@ -18,7 +18,7 @@
 ## Short Description (≤132 chars)
 
 ```
-Export Gemini, ChatGPT, Claude, Meta AI, WhatsApp and OpenWebUI chats to Markdown with images. One click, fully offline.
+Draw from every AI; grow your own intelligence. Export Gemini, ChatGPT, Claude, Meta AI, WhatsApp, OpenWebUI to Markdown.
 ```
 
 ---
@@ -26,7 +26,7 @@ Export Gemini, ChatGPT, Claude, Meta AI, WhatsApp and OpenWebUI chats to Markdow
 ## Detailed Description (English)
 
 ```
-🚀 AI Chat Exporter — One export button for every AI you talk to.
+🚀 AI Chat Exporter — Draw from every AI; grow your own intelligence.
 
 Switching between Gemini, ChatGPT, Claude, Meta AI, WhatsApp and your own OpenWebUI? Every one of them has a different (or missing) export experience. This extension gives them all the same one-click Markdown export.
 
@@ -77,6 +77,17 @@ No telemetry. No network calls except fetching the page's own images. End-to-end
 
 ━━━━━━━━━━━━━━━━━━━━━━
 
+📍 COMING SOON
+
+More adapters are added on demand, not in big batches. Currently in the queue:
+
+Chinese: Doubao · Kimi · Zhipu (ChatGLM) · Qwen · Wenxin · Spark · MiniMax · StepFun · 01.AI
+English: HuggingChat · Perplexity · DeepSeek · Grok · Mistral Le Chat · Microsoft Copilot · Pi
+
+If a site you care about is on this list, you can sponsor faster delivery (links inside the popup).
+
+━━━━━━━━━━━━━━━━━━━━━━
+
 🔐 PERMISSIONS EXPLAINED
 
 • Host permissions for the six supported sites — only read the chat DOM when you click export.
@@ -92,6 +103,8 @@ No telemetry. No network calls except fetching the page's own images. End-to-end
 
 https://github.com/congzhangzh/sorry_gemini
 
+Like the tool? You can sponsor faster Roadmap delivery on GitHub Sponsors or Ko-fi (links in the popup). The extension stays free and open source — sponsorship only influences which adapter gets prioritized next.
+
 ━━━━━━━━━━━━━━━━━━━━━━
 
 If this saves you time, please leave a ⭐ review!
@@ -102,7 +115,7 @@ If this saves you time, please leave a ⭐ review!
 ## Detailed Description (中文)
 
 ```
-🚀 AI Chat Exporter — 给所有 AI 加上一键导出
+🚀 AI Chat Exporter — 汲百家所长，长出你自己的智慧
 
 Gemini、ChatGPT、Claude、Meta AI、WhatsApp、自部署的 OpenWebUI——每家都有不同的导出体验，或者干脆没有。这个扩展给它们统一了一键 Markdown 导出。
 
@@ -143,6 +156,17 @@ Gemini、ChatGPT、Claude、Meta AI、WhatsApp、自部署的 OpenWebUI——每
 
 ━━━━━━━━━━━━━━━━━━━━━━
 
+📍 即将支持
+
+新适配器按真实需求添加,不批量上线。当前 Roadmap:
+
+中文圈: 豆包 · Kimi · 智谱清言 · 通义千问 · 文心一言 · 讯飞星火 · MiniMax 海螺 · 阶跃跃问 · 零一万物
+英文圈: HuggingChat · Perplexity · DeepSeek · Grok · Mistral Le Chat · Microsoft Copilot · Pi
+
+如果你关注的站点在列表上,可以通过 popup 内的赞助链接让它优先上线。
+
+━━━━━━━━━━━━━━━━━━━━━━
+
 🔐 权限说明
 
 • 6 个支持站点的 host 权限：仅在点击导出时读取对话 DOM
@@ -156,6 +180,8 @@ Gemini、ChatGPT、Claude、Meta AI、WhatsApp、自部署的 OpenWebUI——每
 
 📖 完全开源
 https://github.com/congzhangzh/sorry_gemini
+
+喜欢这工具? 你可以通过 popup 里的 GitHub Sponsors / Ko-fi 链接赞助,加速 Roadmap 上某个站点的落地。扩展本身免费开源,赞助仅影响优先级。
 ```
 
 ---
@@ -247,3 +273,7 @@ https://github.com/congzhangzh/sorry_gemini/issues
 ## Notes for the reviewer
 
 Wildcard `optional_host_permissions: *://*/*` is required so users can authorize their **own self-hosted OpenWebUI** deployment, whose URL is unknown at packaging time. The permission is **never granted automatically** — it activates only after the user explicitly types in a URL inside the popup and clicks "添加 / Add", which triggers Chrome's native permission prompt. The permission can be revoked from the same popup, which calls `chrome.permissions.remove()`. We could narrow to `http://localhost/*` only, but that would block the legitimate use case of users running OpenWebUI on their own servers.
+
+The optional "spool bucket" checkbox writes an extra `.md` copy of each export to `~/Downloads/ai-chat-spool/<timestamp>-<adapter>-<title>.md` using the regular `chrome.downloads.download` API. This is local-only and does not perform any network requests; it exists so an external MCP server (independent npm package, separate distribution) can pick up conversation history without coupling to the extension.
+
+Sponsorship links in the popup open `github.com/sponsors/...` and `ko-fi.com/...` in a regular browser tab. No in-extension payment, no embedded checkout, no license-key validation. All extension functionality remains free.
