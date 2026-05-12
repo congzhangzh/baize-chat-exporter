@@ -1,637 +1,607 @@
 // ============================================================
-// Gemini Chat Exporter — Content Script
-// Runs on gemini.google.com. Loaded AFTER turndown.min.js
-// and turndown-plugin-gfm.min.js via manifest content_scripts.
+// AI Chat Exporter - Content Script (framework)
+// Drives extraction by delegating to a registered adapter for
+// the current site.  Adapter-specific selectors, scroll-to-load
+// strategy, and HTML cleanup live in content/adapters/*.js.
 // ============================================================
 
-// ----------------------------------------------------------
-// DOM Selector tiers — fallback arrays survive Google redesigns
-// ----------------------------------------------------------
-const SELECTORS = {
-  chatContainer: [
-    'chat-history',
-    '#chat-history',
-    'infinite-scroller',
-    '[jsname="K09D7"]',
-    'main'
-  ],
-  conversationTurn: [
-    'div.conversation-container',
-    '.conversation-container',
-    'conversation-container'
-  ],
-  userQuery: [
-    'user-query',
-    'query-content',
-    '[data-test-id="user-query"]'
-  ],
-  userQueryText: [
-    '.query-text .query-text-line',
-    '.query-text p',
-    '.query-text',
-    'query-text'
-  ],
-  modelResponse: [
-    'model-response',
-    'response-container',
-    '[data-test-id="model-response"]'
-  ],
-  modelResponseContent: [
-    'message-content .markdown',
-    '.model-response-text .markdown',
-    '.response-container-content .markdown',
-    '.markdown',
-    'message-content'
-  ],
-  conversationTitle: [
-    '[data-test-id="conversation-title"]',
-    '.conversation-title',
-    'mat-sidenav .conversation-title',
-    'h1'
-  ],
-  generatedImages: [
-    'generated-image img[src]',
-    '.attachment-container img[src]',
-    '.generated-images img[src]',
-    'model-response img[src]',
-    'message-content img[src]'
-  ],
-  userUploadedImages: [
-    'user-query img[src]',
-    'query-content img[src]',
-    '.query-image img[src]',
-    '.uploaded-image img[src]',
-    '[data-test-id="user-query"] img[src]'
-  ]
-};
-
-// ----------------------------------------------------------
-// Selector helpers
-// ----------------------------------------------------------
-function queryFirst(selectorList, root = document) {
-  const list = Array.isArray(selectorList) ? selectorList : [selectorList];
-  for (const sel of list) {
-    try {
-      const el = root.querySelector(sel);
-      if (el) return el;
-    } catch (_) { /* invalid selector, skip */ }
+(function () {
+  if (window.__AIExporterInstalled) {
+    // Re-injection (e.g. popup hit a stale instance). Keep the original
+    // listener bindings to avoid duplicate sendResponse channels.
+    return;
   }
-  return null;
-}
+  window.__AIExporterInstalled = true;
 
-function queryAll(selectorList, root = document) {
-  const list = Array.isArray(selectorList) ? selectorList : [selectorList];
-  for (const sel of list) {
-    try {
-      const results = root.querySelectorAll(sel);
-      if (results.length > 0) return Array.from(results);
-    } catch (_) { /* invalid selector, skip */ }
+  const registry = window.__AIExporterRegistry;
+  if (!registry) {
+    console.warn('[AI Exporter] Adapter registry missing; content script aborted.');
+    return;
   }
-  return [];
-}
 
-// ----------------------------------------------------------
-// Scroll-to-load: triggers lazy rendering of older messages
-// ----------------------------------------------------------
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+  const adapter = registry.getActive();
+  if (!adapter) {
+    registry.log('No adapter matched this URL:', location.href);
+    return;
+  }
 
-// Find the actual scrollable ancestor of the conversation turns
-function findScrollContainer() {
-  // Prefer the explicit chat container selectors
-  const candidate = queryFirst(SELECTORS.chatContainer);
-  if (candidate && candidate.scrollHeight > candidate.clientHeight) return candidate;
+  registry.log('Active adapter:', adapter.id, '(', adapter.extractMode, ')');
 
-  // Walk up from the first turn to find a scrollable ancestor
-  const firstTurn = queryFirst(SELECTORS.conversationTurn);
-  if (firstTurn) {
-    let el = firstTurn.parentElement;
-    while (el && el !== document.body) {
-      if (el.scrollHeight > el.clientHeight + 10) return el;
-      el = el.parentElement;
+  // ----------------------------------------------------------
+  // Storage-driven enable check
+  // ----------------------------------------------------------
+  function isAdapterEnabled() {
+    return new Promise(resolve => {
+      try {
+        chrome.storage.local.get('site_bindings', data => {
+          const bindings = data && data.site_bindings;
+          if (!Array.isArray(bindings)) {
+            resolve(true);
+            return;
+          }
+          const binding = bindings.find(b => b.adapter === adapter.id);
+          if (!binding) {
+            resolve(true);
+            return;
+          }
+          resolve(binding.enabled !== false);
+        });
+      } catch (_) {
+        resolve(true);
+      }
+    });
+  }
+
+  // ----------------------------------------------------------
+  // Selector helpers
+  // ----------------------------------------------------------
+  function queryFirst(selectorList, root = document) {
+    const list = Array.isArray(selectorList) ? selectorList : [selectorList];
+    for (const sel of list) {
+      try {
+        const el = root.querySelector(sel);
+        if (el) return el;
+      } catch (_) { /* skip invalid selector */ }
     }
-  }
-
-  // Fall back to documentElement (window scroll)
-  return document.documentElement;
-}
-
-function triggerScrollEvent(container) {
-  container.dispatchEvent(new Event('scroll', { bubbles: true }));
-  window.dispatchEvent(new Event('scroll'));
-}
-
-async function loadAllMessages(onProgress) {
-  const container = findScrollContainer();
-
-  const MAX_ATTEMPTS = 40;
-  const SCROLL_DELAY_MS = 900;
-  const STABLE_THRESHOLD = 3;
-
-  const savedScrollTop = container.scrollTop;
-
-  // Pass 1: scroll to top to load older messages
-  let stableCount = 0;
-  let lastTurnCount = 0;
-  for (let attempt = 0; attempt < MAX_ATTEMPTS && stableCount < STABLE_THRESHOLD; attempt++) {
-    container.scrollTop = 0;
-    triggerScrollEvent(container);
-    await sleep(SCROLL_DELAY_MS);
-
-    const currentCount = queryAll(SELECTORS.conversationTurn).length;
-    if (currentCount === lastTurnCount) {
-      stableCount++;
-    } else {
-      stableCount = 0;
-      lastTurnCount = currentCount;
-    }
-    if (onProgress) onProgress(currentCount);
-  }
-
-  // Pass 2: scroll to bottom to load newer messages below original position
-  stableCount = 0;
-  for (let attempt = 0; attempt < MAX_ATTEMPTS && stableCount < STABLE_THRESHOLD; attempt++) {
-    container.scrollTop = container.scrollHeight;
-    triggerScrollEvent(container);
-    await sleep(SCROLL_DELAY_MS);
-
-    const currentCount = queryAll(SELECTORS.conversationTurn).length;
-    if (currentCount === lastTurnCount) {
-      stableCount++;
-    } else {
-      stableCount = 0;
-      lastTurnCount = currentCount;
-    }
-    if (onProgress) onProgress(currentCount);
-  }
-
-  container.scrollTop = savedScrollTop;
-  triggerScrollEvent(container);
-  return lastTurnCount;
-}
-
-// ----------------------------------------------------------
-// Image URL resolution — fetch blob: / https: URLs to base64
-// ----------------------------------------------------------
-
-/**
- * Detect MIME type from blob or URL, fallback to 'image/png'.
- */
-function mimeFromBlob(blob) {
-  if (blob.type && blob.type.startsWith('image/')) return blob.type;
-  return 'image/png';
-}
-
-function extensionFromMime(mime) {
-  const map = {
-    'image/png': 'png',
-    'image/jpeg': 'jpg',
-    'image/gif': 'gif',
-    'image/webp': 'webp',
-    'image/svg+xml': 'svg',
-    'image/bmp': 'bmp'
-  };
-  return map[mime] || 'png';
-}
-
-/**
- * Fetch a URL (blob: or https:) and convert to { base64, mimeType }.
- * Returns null on failure.
- */
-async function fetchImageAsBase64(url) {
-  try {
-    const response = await fetch(url);
-    if (!response.ok) return null;
-    const blob = await response.blob();
-    const mimeType = mimeFromBlob(blob);
-    const buffer = await blob.arrayBuffer();
-    const bytes = new Uint8Array(buffer);
-    let binary = '';
-    for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    const base64 = btoa(binary);
-    return { base64, mimeType };
-  } catch (_) {
     return null;
   }
-}
 
-/**
- * Convert a URL to a data URL string. Returns original URL on failure.
- */
-async function urlToDataUrl(url) {
-  const result = await fetchImageAsBase64(url);
-  if (!result) return url;
-  return `data:${result.mimeType};base64,${result.base64}`;
-}
-
-// ----------------------------------------------------------
-// Extraction
-// ----------------------------------------------------------
-function extractUserText(userEl) {
-  const lines = queryAll(SELECTORS.userQueryText, userEl);
-  if (lines.length > 0) {
-    return lines.map(l => l.textContent.trim()).filter(t => t.length > 0).join('\n');
-  }
-  return userEl.textContent.trim();
-}
-
-function extractModelHtml(modelEl) {
-  const contentEl = queryFirst(SELECTORS.modelResponseContent, modelEl);
-  if (!contentEl) return null;
-
-  // Clone to avoid mutating the live DOM
-  const clone = contentEl.cloneNode(true);
-
-  // Remove citation buttons / footnote markers that pollute exported text
-  clone.querySelectorAll('.citation-button, .footnote, [data-citation], .cite-marker').forEach(el => el.remove());
-  // Remove "Show more" / expand buttons
-  clone.querySelectorAll('button, .expand-button').forEach(el => el.remove());
-
-  return clone.innerHTML;
-}
-
-/**
- * Extract images from an element using given selector list.
- * Returns array of { url, alt }.
- */
-function extractImagesFromElement(el, selectorList) {
-  const found = [];
-  const seen = new Set();
-
-  for (const sel of selectorList) {
-    try {
-      const imgs = el.querySelectorAll(sel);
-      imgs.forEach(img => {
-        const src = img.currentSrc || img.getAttribute('src') || '';
-        if (!src || seen.has(src)) return;
-        // Skip tiny data URIs (icons / spinners, usually < 300 chars)
-        if (src.startsWith('data:') && src.length < 300) return;
-        // Skip already-embedded large data URIs (don't re-process)
-        if (src.startsWith('data:') && src.length >= 300) {
-          seen.add(src);
-          found.push({ url: src, alt: img.getAttribute('alt') || 'Image' });
-          return;
-        }
-        try {
-          const abs = new URL(src, window.location.href).href;
-          seen.add(src);
-          found.push({ url: abs, alt: img.getAttribute('alt') || 'Image' });
-        } catch (_) {}
-      });
-    } catch (_) {}
+  function queryAll(selectorList, root = document) {
+    const list = Array.isArray(selectorList) ? selectorList : [selectorList];
+    for (const sel of list) {
+      try {
+        const results = root.querySelectorAll(sel);
+        if (results.length > 0) return Array.from(results);
+      } catch (_) { /* skip */ }
+    }
+    return [];
   }
 
-  return found;
-}
+  // ----------------------------------------------------------
+  // Generic scroll-to-load (used when adapter doesn't override)
+  // ----------------------------------------------------------
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-function extractImages(modelEl, includeImages) {
-  if (!includeImages) return [];
-  return extractImagesFromElement(modelEl, SELECTORS.generatedImages);
-}
+  function findScrollContainer() {
+    const candidate = queryFirst(adapter.selectors?.chatContainer || []);
+    if (candidate && candidate.scrollHeight > candidate.clientHeight) return candidate;
 
-function extractUserImages(userEl, includeImages) {
-  if (!includeImages) return [];
-  return extractImagesFromElement(userEl, SELECTORS.userUploadedImages);
-}
-
-function extractConversation(includeImages) {
-  const turns = queryAll(SELECTORS.conversationTurn);
-
-  // Fallback: no wrapper elements — collect interleaved user/model elements
-  if (turns.length === 0) {
-    return extractConversationFallback(includeImages);
+    const firstTurn = queryFirst(adapter.selectors?.conversationTurn || []);
+    if (firstTurn) {
+      let el = firstTurn.parentElement;
+      while (el && el !== document.body) {
+        if (el.scrollHeight > el.clientHeight + 10) return el;
+        el = el.parentElement;
+      }
+    }
+    return document.documentElement;
   }
 
-  return turns.map((turn, index) => {
-    const userEl = queryFirst(SELECTORS.userQuery, turn);
-    const modelEl = queryFirst(SELECTORS.modelResponse, turn);
-    return {
-      index,
-      userText: userEl ? extractUserText(userEl) : null,
-      userImages: userEl ? extractUserImages(userEl, includeImages) : [],
-      modelHtml: modelEl ? extractModelHtml(modelEl) : null,
-      images: modelEl ? extractImages(modelEl, includeImages) : []
+  function triggerScrollEvent(container) {
+    container.dispatchEvent(new Event('scroll', { bubbles: true }));
+    window.dispatchEvent(new Event('scroll'));
+  }
+
+  async function loadAllMessages(onProgress) {
+    if (typeof adapter.scrollToLoadMore === 'function') {
+      return adapter.scrollToLoadMore(onProgress);
+    }
+    const turnSelectors = adapter.selectors?.conversationTurn || [];
+    const container = findScrollContainer();
+    const savedScrollTop = container.scrollTop;
+
+    const MAX_ATTEMPTS = 40;
+    const SCROLL_DELAY_MS = 900;
+    const STABLE_THRESHOLD = 3;
+
+    let stableCount = 0;
+    let lastTurnCount = 0;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS && stableCount < STABLE_THRESHOLD; attempt++) {
+      container.scrollTop = 0;
+      triggerScrollEvent(container);
+      await sleep(SCROLL_DELAY_MS);
+      const currentCount = queryAll(turnSelectors).length;
+      if (currentCount === lastTurnCount) stableCount++;
+      else { stableCount = 0; lastTurnCount = currentCount; }
+      if (onProgress) onProgress(currentCount);
+    }
+
+    stableCount = 0;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS && stableCount < STABLE_THRESHOLD; attempt++) {
+      container.scrollTop = container.scrollHeight;
+      triggerScrollEvent(container);
+      await sleep(SCROLL_DELAY_MS);
+      const currentCount = queryAll(turnSelectors).length;
+      if (currentCount === lastTurnCount) stableCount++;
+      else { stableCount = 0; lastTurnCount = currentCount; }
+      if (onProgress) onProgress(currentCount);
+    }
+
+    container.scrollTop = savedScrollTop;
+    triggerScrollEvent(container);
+    return lastTurnCount;
+  }
+
+  // ----------------------------------------------------------
+  // Image fetch / encode (site-agnostic)
+  // ----------------------------------------------------------
+  function mimeFromBlob(blob) {
+    if (blob.type && blob.type.startsWith('image/')) return blob.type;
+    return 'image/png';
+  }
+
+  function extensionFromMime(mime) {
+    const map = {
+      'image/png': 'png',
+      'image/jpeg': 'jpg',
+      'image/gif': 'gif',
+      'image/webp': 'webp',
+      'image/svg+xml': 'svg',
+      'image/bmp': 'bmp'
     };
-  }).filter(t => t.userText || t.modelHtml);
-}
+    return map[mime] || 'png';
+  }
 
-function extractConversationFallback(includeImages) {
-  // Build synthetic turns by interleaving user-query and model-response elements
-  const userEls = queryAll(SELECTORS.userQuery);
-  const modelEls = queryAll(SELECTORS.modelResponse);
+  async function fetchImageAsBase64(url) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) return null;
+      const blob = await response.blob();
+      const mimeType = mimeFromBlob(blob);
+      const buffer = await blob.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      return { base64: btoa(binary), mimeType };
+    } catch (_) {
+      return null;
+    }
+  }
 
-  const allNodes = [...userEls.map(el => ({ type: 'user', el })),
-                    ...modelEls.map(el => ({ type: 'model', el }))]
-    .sort((a, b) => {
+  async function urlToDataUrl(url) {
+    const result = await fetchImageAsBase64(url);
+    if (!result) return url;
+    return `data:${result.mimeType};base64,${result.base64}`;
+  }
+
+  // ----------------------------------------------------------
+  // Turn-based extraction
+  // ----------------------------------------------------------
+  function extractUserText(userEl) {
+    const lines = queryAll(adapter.selectors.userQueryText, userEl);
+    if (lines.length > 0) {
+      return lines.map(l => l.textContent.trim()).filter(t => t.length > 0).join('\n');
+    }
+    return userEl.textContent.trim();
+  }
+
+  function extractModelHtml(modelEl) {
+    const contentEl = queryFirst(adapter.selectors.modelResponseContent, modelEl);
+    if (!contentEl) return null;
+    const clone = contentEl.cloneNode(true);
+    if (typeof adapter.cleanResponseClone === 'function') {
+      adapter.cleanResponseClone(clone);
+    }
+    return clone.innerHTML;
+  }
+
+  function extractImagesFromElement(el, selectorList) {
+    const found = [];
+    const seen = new Set();
+    for (const sel of selectorList) {
+      try {
+        const imgs = el.querySelectorAll(sel);
+        imgs.forEach(img => {
+          const src = img.currentSrc || img.getAttribute('src') || '';
+          if (!src || seen.has(src)) return;
+          if (src.startsWith('data:') && src.length < 300) return;
+          if (src.startsWith('data:') && src.length >= 300) {
+            seen.add(src);
+            found.push({ url: src, alt: img.getAttribute('alt') || 'Image' });
+            return;
+          }
+          try {
+            const abs = new URL(src, window.location.href).href;
+            seen.add(src);
+            found.push({ url: abs, alt: img.getAttribute('alt') || 'Image' });
+          } catch (_) {}
+        });
+      } catch (_) {}
+    }
+    return found;
+  }
+
+  function extractImages(modelEl, includeImages) {
+    if (!includeImages) return [];
+    return extractImagesFromElement(modelEl, adapter.selectors.generatedImages || []);
+  }
+
+  function extractUserImages(userEl, includeImages) {
+    if (!includeImages) return [];
+    return extractImagesFromElement(userEl, adapter.selectors.userUploadedImages || []);
+  }
+
+  function extractTurnConversation(includeImages) {
+    const turns = queryAll(adapter.selectors.conversationTurn);
+    registry.log('Turn count from primary selectors:', turns.length);
+
+    if (turns.length === 0) {
+      return extractTurnConversationFallback(includeImages);
+    }
+
+    return turns.map((turn, index) => {
+      const userEl = queryFirst(adapter.selectors.userQuery, turn);
+      const modelEl = queryFirst(adapter.selectors.modelResponse, turn);
+      const modelLabel = modelEl && typeof adapter.decorateModelLabel === 'function'
+        ? adapter.decorateModelLabel(modelEl)
+        : adapter.displayName;
+      return {
+        index,
+        userText: userEl ? extractUserText(userEl) : null,
+        userImages: userEl ? extractUserImages(userEl, includeImages) : [],
+        modelHtml: modelEl ? extractModelHtml(modelEl) : null,
+        modelLabel,
+        images: modelEl ? extractImages(modelEl, includeImages) : []
+      };
+    }).filter(t => t.userText || t.modelHtml);
+  }
+
+  function extractTurnConversationFallback(includeImages) {
+    const userEls = queryAll(adapter.selectors.userQuery);
+    const modelEls = queryAll(adapter.selectors.modelResponse);
+    registry.log('Fallback user/model counts:', userEls.length, modelEls.length);
+
+    const allNodes = [
+      ...userEls.map(el => ({ type: 'user', el })),
+      ...modelEls.map(el => ({ type: 'model', el }))
+    ].sort((a, b) => {
       const pos = a.el.compareDocumentPosition(b.el);
       return pos & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
     });
 
-  const turns = [];
-  let currentTurn = null;
+    const turns = [];
+    let currentTurn = null;
 
-  for (const { type, el } of allNodes) {
-    if (type === 'user') {
-      if (currentTurn) turns.push(currentTurn);
-      currentTurn = {
-        index: turns.length,
-        userText: extractUserText(el),
-        userImages: extractUserImages(el, includeImages),
-        modelHtml: null,
-        images: []
-      };
-    } else if (type === 'model' && currentTurn) {
-      currentTurn.modelHtml = extractModelHtml(el);
-      currentTurn.images = extractImages(el, includeImages);
-    }
-  }
-  if (currentTurn) turns.push(currentTurn);
-
-  return turns.filter(t => t.userText || t.modelHtml);
-}
-
-// ----------------------------------------------------------
-// Image resolution for different export modes
-// ----------------------------------------------------------
-
-/**
- * Classify whether a URL is local (blob:) or remote (https:).
- */
-function isLocalUrl(url) {
-  return url.startsWith('blob:') || url.startsWith('data:');
-}
-
-/**
- * Resolve images in all turns for INLINE mode.
- * Modifies image URLs in-place to data URLs.
- */
-async function resolveImagesInline(turns, includeRemoteImages) {
-  for (const turn of turns) {
-    const allImages = [...(turn.userImages || []), ...(turn.images || [])];
-    for (const img of allImages) {
-      if (img.url.startsWith('data:')) continue; // already inline
-
-      const shouldResolve =
-        img.url.startsWith('blob:') ||
-        (includeRemoteImages && img.url.startsWith('http'));
-
-      if (shouldResolve) {
-        img.url = await urlToDataUrl(img.url);
+    for (const { type, el } of allNodes) {
+      if (type === 'user') {
+        if (currentTurn) turns.push(currentTurn);
+        currentTurn = {
+          index: turns.length,
+          userText: extractUserText(el),
+          userImages: extractUserImages(el, includeImages),
+          modelHtml: null,
+          modelLabel: adapter.displayName,
+          images: []
+        };
+      } else if (type === 'model' && currentTurn) {
+        currentTurn.modelHtml = extractModelHtml(el);
+        if (typeof adapter.decorateModelLabel === 'function') {
+          currentTurn.modelLabel = adapter.decorateModelLabel(el);
+        }
+        currentTurn.images = extractImages(el, includeImages);
       }
     }
+    if (currentTurn) turns.push(currentTurn);
+    return turns.filter(t => t.userText || t.modelHtml);
   }
-}
 
-/**
- * Resolve images in all turns for EXTRACT mode (ZIP packaging).
- * Returns array of { filename, base64, mimeType }.
- * Modifies image URLs in-place to relative paths.
- */
-async function resolveImagesExtract(turns, includeRemoteImages) {
-  const extractedImages = [];
-  let imageIndex = 0;
+  // ----------------------------------------------------------
+  // Bubble-based extraction
+  // ----------------------------------------------------------
+  function extractBubbleConversation(includeImages) {
+    if (typeof adapter.collectBubbles !== 'function') return [];
+    const bubbles = adapter.collectBubbles();
+    registry.log('Bubble count:', bubbles.length);
+    return bubbles.map(b => ({
+      role: b.role,
+      author: b.author,
+      timestamp: b.timestamp,
+      html: b.html,
+      images: includeImages ? (b.images || []) : []
+    }));
+  }
 
-  for (const turn of turns) {
-    const allImageSets = [
-      { images: turn.userImages || [], prefix: 'user' },
-      { images: turn.images || [], prefix: 'model' }
-    ];
-
-    for (const { images } of allImageSets) {
-      for (const img of images) {
-        if (img.url.startsWith('data:')) {
-          // Already a data URL — extract it
-          const match = img.url.match(/^data:(image\/[^;]+);base64,(.+)$/);
-          if (match) {
-            imageIndex++;
-            const mimeType = match[1];
-            const ext = extensionFromMime(mimeType);
-            const filename = `image_${String(imageIndex).padStart(3, '0')}.${ext}`;
-            extractedImages.push({ filename, base64: match[2], mimeType });
-            img.url = `images/${filename}`;
-          }
-          continue;
-        }
-
+  // ----------------------------------------------------------
+  // Image resolution (shared)
+  // ----------------------------------------------------------
+  async function resolveTurnImagesInline(turns, includeRemoteImages) {
+    for (const turn of turns) {
+      const allImages = [...(turn.userImages || []), ...(turn.images || [])];
+      for (const img of allImages) {
+        if (img.url.startsWith('data:')) continue;
         const shouldResolve =
           img.url.startsWith('blob:') ||
           (includeRemoteImages && img.url.startsWith('http'));
+        if (shouldResolve) img.url = await urlToDataUrl(img.url);
+      }
+    }
+  }
 
-        if (shouldResolve) {
-          const result = await fetchImageAsBase64(img.url);
-          if (result) {
-            imageIndex++;
-            const ext = extensionFromMime(result.mimeType);
-            const filename = `image_${String(imageIndex).padStart(3, '0')}.${ext}`;
-            extractedImages.push({ filename, base64: result.base64, mimeType: result.mimeType });
-            img.url = `images/${filename}`;
-          }
-          // If fetch failed, keep original URL
+  async function resolveTurnImagesExtract(turns, includeRemoteImages) {
+    const extracted = [];
+    let imageIndex = 0;
+
+    for (const turn of turns) {
+      const groups = [turn.userImages || [], turn.images || []];
+      for (const images of groups) {
+        for (const img of images) {
+          imageIndex = await packImage(img, imageIndex, extracted, includeRemoteImages);
         }
       }
     }
+    return extracted;
   }
 
-  return extractedImages;
-}
-
-// ----------------------------------------------------------
-// Turndown configuration
-// ----------------------------------------------------------
-function buildTurndownService() {
-  const td = new TurndownService({
-    codeBlockStyle: 'fenced',
-    headingStyle: 'atx',
-    emDelimiter: '*',
-    strongDelimiter: '**',
-    hr: '---',
-    bulletListMarker: '-'
-  });
-
-  // GFM plugin: tables, strikethrough, task lists
-  if (typeof turndownPluginGfm !== 'undefined') {
-    td.use(turndownPluginGfm.gfm);
-  }
-
-  // Math block: $$...$$
-  td.addRule('mathBlock', {
-    filter: node =>
-      node.nodeType === 1 &&
-      node.matches('.math-block[data-math], [data-formula], mjx-container[display="true"]'),
-    replacement: (_content, node) => {
-      const latex =
-        node.getAttribute('data-math') ||
-        node.getAttribute('data-formula') ||
-        node.textContent.trim();
-      return `\n\n$$${latex}$$\n\n`;
-    }
-  });
-
-  // Math inline: $...$
-  td.addRule('mathInline', {
-    filter: node =>
-      node.nodeType === 1 &&
-      node.matches('.math-inline[data-math], mjx-container:not([display="true"])'),
-    replacement: (_content, node) => {
-      const latex =
-        node.getAttribute('data-math') ||
-        node.textContent.trim();
-      return `$${latex}$`;
-    }
-  });
-
-  // Hard line breaks
-  td.addRule('hardBreak', {
-    filter: 'br',
-    replacement: () => '  \n'
-  });
-
-  // Strip Gemini citation markers
-  td.addRule('citations', {
-    filter: node =>
-      node.nodeType === 1 && (
-        node.classList.contains('cite-marker') ||
-        node.classList.contains('citation-button') ||
-        node.getAttribute('data-citation') != null
-      ),
-    replacement: () => ''
-  });
-
-  return td;
-}
-
-// ----------------------------------------------------------
-// Markdown assembly
-// ----------------------------------------------------------
-function getConversationTitle() {
-  const titleEl = queryFirst(SELECTORS.conversationTitle);
-  if (titleEl) {
-    const t = titleEl.textContent.trim();
-    if (t && t.length > 0) return t;
-  }
-  return document.title.replace(/ ?[-–|] ?Gemini.*/i, '').trim() || 'Gemini Conversation';
-}
-
-function sanitizeFilename(name) {
-  return name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '').replace(/\s+/g, '_').slice(0, 80) || 'gemini_chat';
-}
-
-function cleanMarkdown(text) {
-  return text
-    .replace(/\[cite_start\]/g, '')
-    .replace(/\[cite:[\d,\s]+\]/g, '')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
-
-function buildMarkdown(turns, td) {
-  const title = getConversationTitle();
-  const date = new Date().toISOString().split('T')[0];
-
-  let md = `# ${title}\n\n`;
-  md += `*Exported from Gemini on ${date}*\n\n`;
-  md += `---\n\n`;
-
-  for (const turn of turns) {
-    if (turn.userText) {
-      md += `## You\n\n`;
-      md += `${turn.userText.trim()}\n\n`;
-
-      // User-uploaded images
-      if (turn.userImages && turn.userImages.length > 0) {
-        turn.userImages.forEach(img => {
-          md += `![${img.alt}](${img.url})\n\n`;
-        });
+  async function resolveBubbleImagesInline(bubbles, includeRemoteImages) {
+    for (const b of bubbles) {
+      for (const img of (b.images || [])) {
+        if (img.url.startsWith('data:')) continue;
+        const shouldResolve =
+          img.url.startsWith('blob:') ||
+          (includeRemoteImages && img.url.startsWith('http'));
+        if (shouldResolve) img.url = await urlToDataUrl(img.url);
       }
-
-      md += `---\n\n`;
     }
+  }
 
-    if (turn.modelHtml) {
-      md += `## Gemini\n\n`;
-      let responseText = cleanMarkdown(td.turndown(turn.modelHtml));
-      md += `${responseText}\n\n`;
-
-      if (turn.images && turn.images.length > 0) {
-        turn.images.forEach(img => {
-          md += `![${img.alt}](${img.url})\n\n`;
-        });
+  async function resolveBubbleImagesExtract(bubbles, includeRemoteImages) {
+    const extracted = [];
+    let imageIndex = 0;
+    for (const b of bubbles) {
+      for (const img of (b.images || [])) {
+        imageIndex = await packImage(img, imageIndex, extracted, includeRemoteImages);
       }
-
-      md += `---\n\n`;
     }
+    return extracted;
   }
 
-  return md;
-}
+  async function packImage(img, imageIndex, out, includeRemoteImages) {
+    if (img.url.startsWith('data:')) {
+      const match = img.url.match(/^data:(image\/[^;]+);base64,(.+)$/);
+      if (match) {
+        imageIndex++;
+        const mimeType = match[1];
+        const filename = `image_${String(imageIndex).padStart(3, '0')}.${extensionFromMime(mimeType)}`;
+        out.push({ filename, base64: match[2], mimeType });
+        img.url = `images/${filename}`;
+      }
+      return imageIndex;
+    }
+    const shouldResolve =
+      img.url.startsWith('blob:') ||
+      (includeRemoteImages && img.url.startsWith('http'));
+    if (!shouldResolve) return imageIndex;
 
-// ----------------------------------------------------------
-// Message listener (receives commands from popup)
-// ----------------------------------------------------------
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.action === 'PING') {
-    sendResponse({ ready: true });
-    return false;
+    const result = await fetchImageAsBase64(img.url);
+    if (!result) return imageIndex;
+    imageIndex++;
+    const filename = `image_${String(imageIndex).padStart(3, '0')}.${extensionFromMime(result.mimeType)}`;
+    out.push({ filename, base64: result.base64, mimeType: result.mimeType });
+    img.url = `images/${filename}`;
+    return imageIndex;
   }
 
-  if (message.action === 'EXPORT') {
-    const {
-      mode,
-      includeImages,
-      scrollFirst,
-      imageMode = 'inline',         // 'inline' | 'extract'
-      includeRemoteImages = false
-    } = message.options;
+  // ----------------------------------------------------------
+  // Turndown
+  // ----------------------------------------------------------
+  function buildTurndownService() {
+    const td = new TurndownService({
+      codeBlockStyle: 'fenced',
+      headingStyle: 'atx',
+      emDelimiter: '*',
+      strongDelimiter: '**',
+      hr: '---',
+      bulletListMarker: '-'
+    });
+    if (typeof turndownPluginGfm !== 'undefined') {
+      td.use(turndownPluginGfm.gfm);
+    }
+    td.addRule('hardBreak', {
+      filter: 'br',
+      replacement: () => '  \n'
+    });
+    if (typeof adapter.customTurndownRules === 'function') {
+      adapter.customTurndownRules(td);
+    }
+    return td;
+  }
 
-    (async () => {
+  // ----------------------------------------------------------
+  // Markdown assembly
+  // ----------------------------------------------------------
+  function sanitizeFilename(name) {
+    return name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '').replace(/\s+/g, '_').slice(0, 80) || 'ai_chat';
+  }
+
+  function getTitle() {
+    if (typeof adapter.getConversationTitle === 'function') {
       try {
-        if (scrollFirst) {
-          await loadAllMessages();
-        }
-
-        const td = buildTurndownService();
-        const turns = extractConversation(includeImages);
-
-        if (turns.length === 0) {
-          sendResponse({ error: '未找到对话内容。请确认当前页面是 Gemini 对话，且已完全加载。' });
-          return;
-        }
-
-        const title = getConversationTitle();
-        const filenameBase = sanitizeFilename(title);
-
-        let extractedImages = [];
-
-        if (includeImages) {
-          if (imageMode === 'extract') {
-            // ZIP mode: resolve images, get separate files, use relative paths in markdown
-            extractedImages = await resolveImagesExtract(turns, includeRemoteImages);
-          } else {
-            // Inline mode: resolve blob/remote URLs to data URLs in-place
-            await resolveImagesInline(turns, includeRemoteImages);
-          }
-        }
-
-        const markdown = buildMarkdown(turns, td);
-
-        sendResponse({
-          status: 'done',
-          mode,
-          markdown,
-          filename: filenameBase + (imageMode === 'extract' ? '.zip' : '.md'),
-          filenameBase,
-          turnCount: turns.length,
-          extractedImages: imageMode === 'extract' ? extractedImages : [],
-          imageMode
-        });
+        const t = adapter.getConversationTitle(queryFirst, queryAll);
+        if (t && t.trim()) return t.trim();
       } catch (err) {
-        sendResponse({ error: err.message });
+        registry.log('adapter.getConversationTitle threw:', err);
       }
-    })();
-
-    return true; // Keep message channel open for async sendResponse
+    }
+    return 'AI Conversation';
   }
-});
+
+  function cleanMarkdown(text) {
+    let out = text.replace(/\n{3,}/g, '\n\n');
+    if (typeof adapter.cleanMarkdown === 'function') {
+      out = adapter.cleanMarkdown(out);
+    }
+    return out.trim();
+  }
+
+  function buildTurnMarkdown(turns, td) {
+    const title = getTitle();
+    const date = new Date().toISOString().split('T')[0];
+
+    let md = `# ${title}\n\n`;
+    md += `*Exported from ${adapter.displayName} on ${date}*\n\n---\n\n`;
+
+    for (const turn of turns) {
+      if (turn.userText) {
+        md += `## You\n\n${turn.userText.trim()}\n\n`;
+        if (turn.userImages && turn.userImages.length > 0) {
+          turn.userImages.forEach(img => {
+            md += `![${img.alt}](${img.url})\n\n`;
+          });
+        }
+        md += `---\n\n`;
+      }
+      if (turn.modelHtml) {
+        const label = turn.modelLabel || adapter.displayName;
+        md += `## ${label}\n\n`;
+        md += `${cleanMarkdown(td.turndown(turn.modelHtml))}\n\n`;
+        if (turn.images && turn.images.length > 0) {
+          turn.images.forEach(img => {
+            md += `![${img.alt}](${img.url})\n\n`;
+          });
+        }
+        md += `---\n\n`;
+      }
+    }
+    return md;
+  }
+
+  function buildBubbleMarkdown(bubbles, td) {
+    const title = getTitle();
+    const date = new Date().toISOString().split('T')[0];
+
+    let md = `# ${title}\n\n`;
+    md += `*Exported from ${adapter.displayName} on ${date}*\n\n---\n\n`;
+
+    for (const b of bubbles) {
+      const author = b.role === 'user' ? (b.author || 'You') : (b.author || 'Contact');
+      const ts = b.timestamp ? ` · ${b.timestamp}` : '';
+      md += `**${author}${ts}**\n\n`;
+      const body = b.html ? cleanMarkdown(td.turndown(b.html)) : '';
+      if (body) md += `${body}\n\n`;
+      if (b.images && b.images.length > 0) {
+        b.images.forEach(img => {
+          md += `![${img.alt}](${img.url})\n\n`;
+        });
+      }
+      md += `---\n\n`;
+    }
+    return md;
+  }
+
+  // ----------------------------------------------------------
+  // Message dispatch
+  // ----------------------------------------------------------
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message.action === 'PING') {
+      sendResponse({ ready: true, adapter: adapter.id, displayName: adapter.displayName });
+      return false;
+    }
+
+    if (message.action === 'EXPORT') {
+      const {
+        mode,
+        includeImages,
+        scrollFirst,
+        imageMode = 'inline',
+        includeRemoteImages = false
+      } = message.options;
+
+      (async () => {
+        try {
+          const enabled = await isAdapterEnabled();
+          if (!enabled) {
+            sendResponse({ error: `已在设置里禁用 ${adapter.displayName} 适配器，请在弹窗内重新启用。` });
+            return;
+          }
+
+          if (scrollFirst) {
+            await loadAllMessages();
+          }
+
+          const td = buildTurndownService();
+          let markdown;
+          let extractedImages = [];
+          let unitCount = 0;
+
+          if (adapter.extractMode === 'bubble-based') {
+            const bubbles = extractBubbleConversation(includeImages);
+            if (bubbles.length === 0) {
+              sendResponse({
+                error: `未找到对话内容。请确认 ${adapter.displayName} 页面已加载完成。`
+              });
+              return;
+            }
+            if (includeImages) {
+              if (imageMode === 'extract') {
+                extractedImages = await resolveBubbleImagesExtract(bubbles, includeRemoteImages);
+              } else {
+                await resolveBubbleImagesInline(bubbles, includeRemoteImages);
+              }
+            }
+            markdown = buildBubbleMarkdown(bubbles, td);
+            unitCount = bubbles.length;
+          } else {
+            const turns = extractTurnConversation(includeImages);
+            if (turns.length === 0) {
+              sendResponse({
+                error: `未找到对话内容。请确认 ${adapter.displayName} 页面已加载完成。`
+              });
+              return;
+            }
+            if (includeImages) {
+              if (imageMode === 'extract') {
+                extractedImages = await resolveTurnImagesExtract(turns, includeRemoteImages);
+              } else {
+                await resolveTurnImagesInline(turns, includeRemoteImages);
+              }
+            }
+            markdown = buildTurnMarkdown(turns, td);
+            unitCount = turns.length;
+          }
+
+          const title = getTitle();
+          const filenameBase = sanitizeFilename(title);
+
+          sendResponse({
+            status: 'done',
+            mode,
+            markdown,
+            filename: filenameBase + (imageMode === 'extract' ? '.zip' : '.md'),
+            filenameBase,
+            turnCount: unitCount,
+            extractedImages: imageMode === 'extract' ? extractedImages : [],
+            imageMode,
+            adapterId: adapter.id,
+            adapterName: adapter.displayName,
+            extractMode: adapter.extractMode
+          });
+        } catch (err) {
+          console.error('[AI Exporter] Export failed:', err);
+          sendResponse({ error: err.message });
+        }
+      })();
+
+      return true;
+    }
+  });
+})();

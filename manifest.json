@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Gemini Chat Exporter",
-  "version": "1.0.0",
-  "description": "Export Gemini conversations to Markdown — download as .md or copy to clipboard",
+  "name": "AI Chat Exporter",
+  "version": "2.0.0",
+  "description": "Export Gemini, ChatGPT, Claude, Meta AI, WhatsApp Web and self-hosted OpenWebUI conversations to Markdown.",
   "permissions": [
     "activeTab",
     "scripting",
@@ -11,7 +11,16 @@
     "clipboardWrite"
   ],
   "host_permissions": [
-    "https://gemini.google.com/*"
+    "https://gemini.google.com/*",
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "https://claude.ai/*",
+    "https://meta.ai/*",
+    "https://www.meta.ai/*",
+    "https://web.whatsapp.com/*"
+  ],
+  "optional_host_permissions": [
+    "*://*/*"
   ],
   "action": {
     "default_popup": "popup/popup.html",
@@ -35,6 +44,52 @@
       "js": [
         "lib/turndown.min.js",
         "lib/turndown-plugin-gfm.min.js",
+        "content/adapter-registry.js",
+        "content/adapters/gemini.js",
+        "content/content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"],
+      "js": [
+        "lib/turndown.min.js",
+        "lib/turndown-plugin-gfm.min.js",
+        "content/adapter-registry.js",
+        "content/adapters/chatgpt.js",
+        "content/content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://claude.ai/*"],
+      "js": [
+        "lib/turndown.min.js",
+        "lib/turndown-plugin-gfm.min.js",
+        "content/adapter-registry.js",
+        "content/adapters/claude.js",
+        "content/content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://meta.ai/*", "https://www.meta.ai/*"],
+      "js": [
+        "lib/turndown.min.js",
+        "lib/turndown-plugin-gfm.min.js",
+        "content/adapter-registry.js",
+        "content/adapters/meta.js",
+        "content/content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": [
+        "lib/turndown.min.js",
+        "lib/turndown-plugin-gfm.min.js",
+        "content/adapter-registry.js",
+        "content/adapters/whatsapp.js",
         "content/content.js"
       ],
       "run_at": "document_idle"

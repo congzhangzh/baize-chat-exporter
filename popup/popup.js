@@ -1,3 +1,164 @@
+// ============================================================
+// AI Chat Exporter - Popup
+// Drives the export flow plus the per-site configuration panel.
+// Uses chrome.storage.local.site_bindings as the source of truth
+// for which adapter handles which URL pattern.
+// ============================================================
+
+const DEFAULT_SITE_BINDINGS = [
+  {
+    adapter: 'gemini',
+    displayName: 'Gemini',
+    enabled: true,
+    defaults: ['https://gemini.google.com/*'],
+    extra: [],
+    dynamic: false
+  },
+  {
+    adapter: 'chatgpt',
+    displayName: 'ChatGPT',
+    enabled: true,
+    defaults: ['https://chatgpt.com/*', 'https://chat.openai.com/*'],
+    extra: [],
+    dynamic: false
+  },
+  {
+    adapter: 'claude',
+    displayName: 'Claude',
+    enabled: true,
+    defaults: ['https://claude.ai/*'],
+    extra: [],
+    dynamic: false
+  },
+  {
+    adapter: 'meta',
+    displayName: 'Meta AI',
+    enabled: true,
+    defaults: ['https://meta.ai/*', 'https://www.meta.ai/*'],
+    extra: [],
+    dynamic: false
+  },
+  {
+    adapter: 'whatsapp',
+    displayName: 'WhatsApp',
+    enabled: true,
+    defaults: ['https://web.whatsapp.com/*'],
+    extra: [],
+    dynamic: false
+  },
+  {
+    adapter: 'openwebui',
+    displayName: 'OpenWebUI',
+    enabled: true,
+    defaults: [],
+    extra: [],
+    dynamic: true
+  }
+];
+
+const ADAPTER_FILE = {
+  gemini: 'content/adapters/gemini.js',
+  chatgpt: 'content/adapters/chatgpt.js',
+  claude: 'content/adapters/claude.js',
+  meta: 'content/adapters/meta.js',
+  whatsapp: 'content/adapters/whatsapp.js',
+  openwebui: 'content/adapters/openwebui.js'
+};
+
+// ----------------------------------------------------------
+// Storage helpers
+// ----------------------------------------------------------
+function loadSiteBindings() {
+  return new Promise(resolve => {
+    chrome.storage.local.get('site_bindings', data => {
+      const stored = Array.isArray(data?.site_bindings) ? data.site_bindings : null;
+      if (!stored) {
+        resolve(cloneBindings(DEFAULT_SITE_BINDINGS));
+        return;
+      }
+
+      // Merge new built-ins added in later versions while preserving user state.
+      const merged = DEFAULT_SITE_BINDINGS.map(def => {
+        const existing = stored.find(b => b.adapter === def.adapter);
+        if (!existing) return cloneBinding(def);
+        return {
+          ...cloneBinding(def),
+          enabled: existing.enabled !== false,
+          extra: Array.isArray(existing.extra) ? existing.extra.slice() : []
+        };
+      });
+      resolve(merged);
+    });
+  });
+}
+
+function saveSiteBindings(bindings) {
+  return new Promise(resolve => {
+    chrome.storage.local.set({ site_bindings: bindings }, resolve);
+  });
+}
+
+function cloneBindings(arr) { return arr.map(cloneBinding); }
+function cloneBinding(b) {
+  return {
+    adapter: b.adapter,
+    displayName: b.displayName,
+    enabled: b.enabled !== false,
+    defaults: Array.isArray(b.defaults) ? b.defaults.slice() : [],
+    extra: Array.isArray(b.extra) ? b.extra.slice() : [],
+    dynamic: !!b.dynamic
+  };
+}
+
+// ----------------------------------------------------------
+// URL pattern matching (Chrome match pattern -> RegExp)
+// ----------------------------------------------------------
+function patternToRegex(pattern) {
+  const escape = s => s.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+  let body = pattern;
+  body = body.replace(/^\*:\/\//, 'https?://');
+  body = body.replace(/\*/g, '\u0000');
+  body = escape(body);
+  body = body.replace(/\u0000/g, '.*');
+  return new RegExp('^' + body + '$');
+}
+
+function urlMatchesPattern(url, pattern) {
+  try {
+    return patternToRegex(pattern).test(url);
+  } catch (_) {
+    return false;
+  }
+}
+
+function normalizeOriginPattern(input) {
+  let raw = input.trim();
+  if (!raw) return null;
+  if (!/^https?:\/\//i.test(raw)) raw = 'https://' + raw;
+  let url;
+  try {
+    url = new URL(raw);
+  } catch (_) {
+    return null;
+  }
+  if (!url.origin || url.origin === 'null') return null;
+  return url.origin + '/*';
+}
+
+function resolveSite(url, bindings) {
+  for (const b of bindings) {
+    if (!b.enabled) continue;
+    const all = [...b.defaults, ...b.extra];
+    if (all.some(p => urlMatchesPattern(url, p))) {
+      return { binding: b, adapterFile: ADAPTER_FILE[b.adapter] };
+    }
+  }
+  return null;
+}
+
+// ----------------------------------------------------------
+// DOM
+// ----------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
   const btnDownload    = document.getElementById('btn-download');
   const btnDownloadTxt = document.getElementById('btn-download-text');
@@ -9,16 +170,23 @@ document.addEventListener('DOMContentLoaded', () => {
   const optRemoteImg   = document.getElementById('opt-remote-images');
   const optZip         = document.getElementById('opt-zip');
   const imageSubOpts   = document.getElementById('image-sub-options');
+  const activeSitePill = document.getElementById('active-site');
+  const sitesSummary   = document.getElementById('sites-summary');
+  const sitesList      = document.getElementById('sites-list');
 
-  // Restore saved preferences
+  let bindings = [];
+
+  // --------------------------------------------------------
+  // Prefs persistence (legacy keys kept for compatibility)
+  // --------------------------------------------------------
   chrome.storage.local.get(
     ['includeImages', 'scrollFirst', 'includeRemoteImages', 'useZip'],
     prefs => {
-      if (prefs.includeImages !== undefined)      optImages.checked    = prefs.includeImages;
-      if (prefs.scrollFirst  !== undefined)       optScroll.checked    = prefs.scrollFirst;
+      if (prefs.includeImages !== undefined)       optImages.checked    = prefs.includeImages;
+      if (prefs.scrollFirst  !== undefined)        optScroll.checked    = prefs.scrollFirst;
       if (prefs.includeRemoteImages !== undefined) optRemoteImg.checked = prefs.includeRemoteImages;
-      if (prefs.useZip !== undefined)             optZip.checked       = prefs.useZip;
-      updateUI();
+      if (prefs.useZip !== undefined)              optZip.checked       = prefs.useZip;
+      updateExportUI();
     }
   );
 
@@ -31,11 +199,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function updateUI() {
-    // Show/hide image sub-options
+  function updateExportUI() {
     imageSubOpts.classList.toggle('hidden', !optImages.checked);
-
-    // Update download button text
     if (optImages.checked && optZip.checked) {
       btnDownloadTxt.textContent = '下载 .zip 文件';
     } else {
@@ -43,42 +208,193 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  optImages.addEventListener('change', () => { savePrefs(); updateUI(); });
+  optImages.addEventListener('change', () => { savePrefs(); updateExportUI(); });
   optScroll.addEventListener('change',  savePrefs);
   optRemoteImg.addEventListener('change', savePrefs);
-  optZip.addEventListener('change', () => { savePrefs(); updateUI(); });
+  optZip.addEventListener('change', () => { savePrefs(); updateExportUI(); });
 
   // --------------------------------------------------------
-  // UI helpers
+  // Status helpers
   // --------------------------------------------------------
-  function setStatus(msg) {
-    statusEl.innerHTML = msg;
-    errorEl.textContent = '';
-  }
-
-  function setError(msg) {
-    errorEl.textContent = msg;
-    statusEl.textContent = '';
-  }
-
-  function setButtons(disabled) {
-    btnDownload.disabled  = disabled;
-    btnClipboard.disabled = disabled;
-  }
-
-  function spinner(label) {
-    return `<span class="spinner"></span>${label}`;
-  }
+  function setStatus(msg) { statusEl.innerHTML = msg; errorEl.textContent = ''; }
+  function setError(msg) { errorEl.textContent = msg; statusEl.textContent = ''; }
+  function setButtons(disabled) { btnDownload.disabled = disabled; btnClipboard.disabled = disabled; }
+  function spinner(label) { return `<span class="spinner"></span>${label}`; }
 
   // --------------------------------------------------------
-  // Inject content script if not already running
+  // Active site pill
   // --------------------------------------------------------
-  async function ensureContentScript(tabId) {
+  async function refreshActivePill() {
+    let tab;
+    try {
+      [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    } catch (_) {
+      activeSitePill.textContent = '未识别站点';
+      activeSitePill.classList.add('inactive');
+      return null;
+    }
+    if (!tab || !tab.url) {
+      activeSitePill.textContent = '未识别站点';
+      activeSitePill.classList.add('inactive');
+      return null;
+    }
+    const hit = resolveSite(tab.url, bindings);
+    if (hit) {
+      activeSitePill.textContent = hit.binding.displayName;
+      activeSitePill.classList.remove('inactive');
+      return { tab, hit };
+    }
+    activeSitePill.textContent = '未识别站点';
+    activeSitePill.classList.add('inactive');
+    return { tab, hit: null };
+  }
+
+  // --------------------------------------------------------
+  // Sites config panel
+  // --------------------------------------------------------
+  function renderSitesPanel() {
+    sitesList.innerHTML = '';
+    let enabledCount = 0;
+    let customCount = 0;
+
+    for (const b of bindings) {
+      if (b.enabled) enabledCount++;
+      customCount += b.extra.length;
+      sitesList.appendChild(renderSiteCard(b));
+    }
+
+    sitesSummary.textContent = `(${enabledCount} 启用 · ${customCount} 自定义域)`;
+  }
+
+  function renderSiteCard(binding) {
+    const card = document.createElement('div');
+    card.className = 'site-card';
+
+    // header (toggle + name)
+    const header = document.createElement('div');
+    header.className = 'site-card-header';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = binding.enabled;
+    cb.id = `toggle-${binding.adapter}`;
+    cb.addEventListener('change', async () => {
+      binding.enabled = cb.checked;
+      await saveSiteBindings(bindings);
+      renderSitesPanel();
+      refreshActivePill();
+    });
+    const label = document.createElement('label');
+    label.htmlFor = cb.id;
+    label.className = 'site-name';
+    label.textContent = binding.displayName;
+    header.appendChild(cb);
+    header.appendChild(label);
+    card.appendChild(header);
+
+    // patterns
+    const list = document.createElement('div');
+    list.className = 'pattern-list';
+
+    if (binding.defaults.length === 0 && binding.dynamic) {
+      const empty = document.createElement('div');
+      empty.className = 'default';
+      empty.textContent = '默认: (无,请添加你的部署地址)';
+      list.appendChild(empty);
+    } else {
+      binding.defaults.forEach(p => {
+        const row = document.createElement('div');
+        row.className = 'default';
+        row.textContent = `默认: ${p}`;
+        list.appendChild(row);
+      });
+    }
+
+    binding.extra.forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'extra-row';
+      const span = document.createElement('span');
+      span.textContent = `· ${p}`;
+      const remove = document.createElement('button');
+      remove.className = 'remove-btn';
+      remove.title = '删除';
+      remove.textContent = '×';
+      remove.addEventListener('click', async () => {
+        const idx = binding.extra.indexOf(p);
+        if (idx >= 0) binding.extra.splice(idx, 1);
+        try { await chrome.permissions.remove({ origins: [p] }); } catch (_) {}
+        await saveSiteBindings(bindings);
+        renderSitesPanel();
+        refreshActivePill();
+      });
+      row.appendChild(span);
+      row.appendChild(remove);
+      list.appendChild(row);
+    });
+
+    card.appendChild(list);
+
+    // add row
+    const addRow = document.createElement('div');
+    addRow.className = 'add-row';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = binding.adapter === 'openwebui'
+      ? 'https://chat.mycompany.com/'
+      : 'https://mirror.example.com/';
+    const addBtn = document.createElement('button');
+    addBtn.textContent = '添加';
+    // chrome.permissions.request must be called synchronously in the user
+    // gesture handler, so we do all preflight work without awaiting first.
+    addBtn.addEventListener('click', () => {
+      const pattern = normalizeOriginPattern(input.value);
+      if (!pattern) {
+        setError('请输入合法的 URL，例如 https://chat.example.com/');
+        return;
+      }
+      if ([...binding.defaults, ...binding.extra].includes(pattern)) {
+        setError('该地址已存在。');
+        return;
+      }
+      chrome.permissions.request({ origins: [pattern] }, async granted => {
+        if (chrome.runtime.lastError) {
+          setError('权限申请失败：' + chrome.runtime.lastError.message);
+          return;
+        }
+        if (!granted) {
+          setError('未授权该域名，扩展无法在此运行。');
+          return;
+        }
+        binding.extra.push(pattern);
+        await saveSiteBindings(bindings);
+        input.value = '';
+        setStatus(`已为 ${binding.displayName} 添加 ${pattern}`);
+        renderSitesPanel();
+        refreshActivePill();
+      });
+    });
+    addRow.appendChild(input);
+    addRow.appendChild(addBtn);
+    card.appendChild(addRow);
+
+    if (binding.dynamic && binding.defaults.length === 0) {
+      const help = document.createElement('div');
+      help.className = 'help-line';
+      help.textContent = 'OpenWebUI 是自部署的，需先把你的实例地址加进来并授权。';
+      card.appendChild(help);
+    }
+
+    return card;
+  }
+
+  // --------------------------------------------------------
+  // Content script injection
+  // --------------------------------------------------------
+  async function ensureContentScript(tabId, adapterFile) {
     try {
       const ping = await chrome.tabs.sendMessage(tabId, { action: 'PING' });
       if (ping && ping.ready) return true;
     } catch (_) {
-      // Not injected yet — inject on demand
+      // not yet injected
     }
 
     try {
@@ -87,11 +403,12 @@ document.addEventListener('DOMContentLoaded', () => {
         files: [
           'lib/turndown.min.js',
           'lib/turndown-plugin-gfm.min.js',
+          'content/adapter-registry.js',
+          adapterFile,
           'content/content.js'
         ]
       });
-      // Give the script a moment to register its listener
-      await new Promise(r => setTimeout(r, 150));
+      await new Promise(r => setTimeout(r, 200));
       return true;
     } catch (err) {
       throw new Error('无法注入脚本：' + err.message);
@@ -99,56 +416,37 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --------------------------------------------------------
-  // Download helpers — directly using chrome.downloads
+  // Download helpers
   // --------------------------------------------------------
-
-  /**
-   * Encode a UTF-8 string as a base64 data URL.
-   */
   function textToDataUrl(text, mimeType = 'text/markdown') {
     const bytes = new TextEncoder().encode(text);
     const binary = Array.from(bytes, b => String.fromCharCode(b)).join('');
     return `data:${mimeType};charset=utf-8;base64,${btoa(binary)}`;
   }
 
-  /**
-   * Trigger a download via chrome.downloads API.
-   */
   function downloadFile(dataUrl, filename) {
-    chrome.downloads.download({ url: dataUrl, filename, saveAs: false }, downloadId => {
+    chrome.downloads.download({ url: dataUrl, filename, saveAs: false }, () => {
       if (chrome.runtime.lastError) {
-        console.error('[Gemini Exporter] Download failed:', chrome.runtime.lastError.message);
+        console.error('[AI Exporter] Download failed:', chrome.runtime.lastError.message);
       }
     });
   }
 
-  /**
-   * Build a ZIP file containing markdown + images, return as data URL.
-   */
   async function buildZip(filenameBase, markdown, extractedImages) {
     const zip = new JSZip();
     const folder = zip.folder(filenameBase);
-
-    // Add markdown file
     folder.file(filenameBase + '.md', markdown);
-
-    // Add images
     if (extractedImages && extractedImages.length > 0) {
       const imgFolder = folder.folder('images');
       for (const img of extractedImages) {
-        // base64 string → binary
         imgFolder.file(img.filename, img.base64, { base64: true });
       }
     }
-
-    // Generate ZIP blob
     const blob = await zip.generateAsync({ type: 'blob' });
     const buffer = await blob.arrayBuffer();
     const bytes = new Uint8Array(buffer);
     let binary = '';
-    for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
     return `data:application/zip;base64,${btoa(binary)}`;
   }
 
@@ -162,14 +460,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const scrollFirst       = optScroll.checked;
     const includeImages     = optImages.checked;
     const includeRemoteImages = optRemoteImg.checked;
-    // ZIP only applies to download mode; clipboard always uses inline (data URLs)
     const useZip            = optZip.checked && includeImages && mode === 'download';
     const imageMode         = useZip ? 'extract' : 'inline';
 
-    const loadingMsg = scrollFirst
-      ? spinner('正在滚动加载历史消息…')
-      : spinner('正在提取对话内容…');
-    setStatus(loadingMsg);
+    setStatus(spinner(scrollFirst ? '正在滚动加载历史消息…' : '正在提取对话内容…'));
 
     let tab;
     try {
@@ -179,25 +473,33 @@ document.addEventListener('DOMContentLoaded', () => {
       setButtons(false);
       return;
     }
+    if (!tab || !tab.url) {
+      setError('无法读取当前页面 URL。');
+      setButtons(false);
+      return;
+    }
 
-    if (!tab || !tab.url || !tab.url.startsWith('https://gemini.google.com/')) {
-      setError('请先打开一个 Gemini 对话页面（gemini.google.com）。');
+    const hit = resolveSite(tab.url, bindings);
+    if (!hit) {
+      setError('当前页面未命中任何启用的站点。请打开支持的 AI 对话页面，或在下方"站点配置"添加/启用站点。');
+      setButtons(false);
+      return;
+    }
+    if (!hit.adapterFile) {
+      setError(`未找到 ${hit.binding.adapter} 的适配器脚本。`);
       setButtons(false);
       return;
     }
 
     try {
-      await ensureContentScript(tab.id);
+      await ensureContentScript(tab.id, hit.adapterFile);
     } catch (err) {
       setError(err.message);
       setButtons(false);
       return;
     }
 
-    // Update status for image processing
-    if (includeImages) {
-      setStatus(spinner('正在提取对话与图片…'));
-    }
+    if (includeImages) setStatus(spinner('正在提取对话与图片…'));
 
     let response;
     try {
@@ -212,19 +514,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (!response) {
-      setError('内容脚本无响应，请刷新 Gemini 页面后重试。');
+      setError('内容脚本无响应，请刷新页面后重试。');
       setButtons(false);
       return;
     }
-
     if (response.error) {
       setError(response.error);
       setButtons(false);
       return;
     }
 
-    // Success
-    const count = response.turnCount ? `（共 ${response.turnCount} 轮对话）` : '';
+    const count = response.turnCount
+      ? `（${response.adapterName || ''} · 共 ${response.turnCount} ${response.extractMode === 'bubble-based' ? '条消息' : '轮对话'}）`
+      : '';
     const imgCount = response.extractedImages && response.extractedImages.length > 0
       ? `，${response.extractedImages.length} 张图片`
       : '';
@@ -237,7 +539,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setError('复制失败：' + err.message);
       }
     } else {
-      // Download mode
       try {
         if (useZip && response.extractedImages && response.extractedImages.length > 0) {
           setStatus(spinner('正在打包 ZIP…'));
@@ -249,7 +550,6 @@ document.addEventListener('DOMContentLoaded', () => {
           downloadFile(zipDataUrl, response.filenameBase + '.zip');
           setStatus(`下载已开始 ${count}${imgCount}`);
         } else {
-          // Single markdown file
           const dataUrl = textToDataUrl(response.markdown);
           downloadFile(dataUrl, response.filenameBase + '.md');
           setStatus(`下载已开始 ${count}`);
@@ -264,4 +564,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnDownload.addEventListener('click',  () => triggerExport('download'));
   btnClipboard.addEventListener('click', () => triggerExport('clipboard'));
+
+  // --------------------------------------------------------
+  // Boot
+  // --------------------------------------------------------
+  (async () => {
+    bindings = await loadSiteBindings();
+    await saveSiteBindings(bindings);
+    renderSitesPanel();
+    refreshActivePill();
+  })();
 });

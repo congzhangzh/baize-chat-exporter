@@ -2,12 +2,12 @@
 <html lang="zh">
 <head>
   <meta charset="utf-8">
-  <title>Gemini Chat Exporter</title>
+  <title>AI Chat Exporter</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      width: 300px;
+      width: 340px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
       font-size: 14px;
       background: #1e1e2e;
@@ -19,13 +19,26 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
 
     .header h1 {
       font-size: 15px;
       font-weight: 600;
       color: #cba6f7;
+    }
+
+    .header .site-pill {
+      margin-left: auto;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #313244;
+      color: #a6e3a1;
+    }
+
+    .header .site-pill.inactive {
+      color: #6c7086;
     }
 
     .options {
@@ -40,7 +53,7 @@
 
     .option-row {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 8px;
       cursor: pointer;
     }
@@ -51,6 +64,7 @@
       accent-color: #cba6f7;
       cursor: pointer;
       flex-shrink: 0;
+      margin-top: 2px;
     }
 
     .option-row label {
@@ -76,12 +90,6 @@
       display: none;
     }
 
-    .divider {
-      height: 1px;
-      background: #45475a;
-      margin: 10px 0;
-    }
-
     .btn {
       width: 100%;
       padding: 10px 14px;
@@ -98,22 +106,15 @@
       transition: opacity 0.15s;
     }
 
-    .btn:last-of-type { margin-bottom: 0; }
     .btn:disabled { opacity: 0.45; cursor: not-allowed; }
     .btn:not(:disabled):hover { opacity: 0.88; }
 
-    #btn-download {
-      background: #cba6f7;
-      color: #1e1e2e;
-    }
-
-    #btn-clipboard {
-      background: #89b4fa;
-      color: #1e1e2e;
-    }
+    #btn-download { background: #cba6f7; color: #1e1e2e; }
+    #btn-clipboard { background: #89b4fa; color: #1e1e2e; }
 
     .status-area {
-      margin-top: 10px;
+      margin-top: 8px;
+      margin-bottom: 8px;
       min-height: 20px;
       font-size: 12px;
       line-height: 1.4;
@@ -134,8 +135,144 @@
       margin-right: 4px;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Sites config */
+    details.sites-section {
+      background: #313244;
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-top: 4px;
+    }
+
+    details.sites-section summary {
+      cursor: pointer;
+      font-size: 12px;
+      color: #bac2de;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    details.sites-section summary::-webkit-details-marker { display: none; }
+
+    details.sites-section summary::before {
+      content: '▸';
+      display: inline-block;
+      transition: transform 0.15s;
+      color: #6c7086;
+    }
+
+    details.sites-section[open] summary::before {
+      transform: rotate(90deg);
+    }
+
+    #sites-summary {
+      margin-left: auto;
+      color: #6c7086;
+      font-size: 11px;
+    }
+
+    #sites-list {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .site-card {
+      background: #1e1e2e;
+      border-radius: 6px;
+      padding: 8px 10px;
+      border: 1px solid #45475a;
+    }
+
+    .site-card-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+
+    .site-card-header input[type="checkbox"] {
+      width: 13px;
+      height: 13px;
+      accent-color: #cba6f7;
+    }
+
+    .site-card-header .site-name {
+      font-weight: 600;
+      font-size: 13px;
+      color: #cdd6f4;
+    }
+
+    .site-card .pattern-list {
+      font-size: 11px;
+      color: #7f849c;
+      margin-left: 21px;
+      line-height: 1.5;
+    }
+
+    .site-card .pattern-list .default {
+      color: #6c7086;
+    }
+
+    .site-card .pattern-list .extra-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: #bac2de;
+    }
+
+    .site-card .pattern-list .extra-row .remove-btn {
+      background: transparent;
+      border: none;
+      color: #f38ba8;
+      cursor: pointer;
+      font-size: 13px;
+      padding: 0 4px;
+    }
+
+    .site-card .add-row {
+      display: flex;
+      gap: 4px;
+      margin-top: 6px;
+      margin-left: 21px;
+    }
+
+    .site-card .add-row input {
+      flex: 1;
+      padding: 4px 6px;
+      border-radius: 4px;
+      border: 1px solid #45475a;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      font-size: 11px;
+      font-family: inherit;
+    }
+
+    .site-card .add-row input::placeholder { color: #585b70; }
+
+    .site-card .add-row button {
+      padding: 4px 8px;
+      border: none;
+      border-radius: 4px;
+      background: #89b4fa;
+      color: #1e1e2e;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .site-card .add-row button:hover { opacity: 0.88; }
+
+    .site-card .help-line {
+      font-size: 10px;
+      color: #585b70;
+      margin-top: 4px;
+      margin-left: 21px;
+      line-height: 1.4;
     }
   </style>
 </head>
@@ -148,7 +285,8 @@
       <line x1="16" y1="17" x2="8" y2="17" stroke="#89b4fa" stroke-width="2" stroke-linecap="round"/>
       <polyline points="10 9 9 9 8 9" stroke="#89b4fa" stroke-width="2" stroke-linecap="round"/>
     </svg>
-    <h1>Gemini Chat Exporter</h1>
+    <h1>AI Chat Exporter</h1>
+    <span class="site-pill inactive" id="active-site">未识别站点</span>
   </div>
 
   <div class="options">
@@ -202,6 +340,14 @@
     <div id="status"></div>
     <div id="error"></div>
   </div>
+
+  <details class="sites-section" id="sites-section">
+    <summary>
+      站点配置
+      <span id="sites-summary"></span>
+    </summary>
+    <div id="sites-list"></div>
+  </details>
 
   <script src="../lib/jszip.min.js"></script>
   <script src="popup.js"></script>

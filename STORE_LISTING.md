@@ -1,24 +1,24 @@
-# Chrome Web Store Listing — Gemini Chat Exporter
+# Chrome Web Store Listing — AI Chat Exporter
 
-> 本文档包含上架 Chrome Web Store 所需的所有文案素材。
+> Copy material for the Chrome Web Store submission of the multi-site AI Chat Exporter (v2.0+).
 
 ---
 
-## 基本信息
+## Basics
 
-| 字段 | 内容 |
-|------|------|
-| **Extension Name** | Gemini Chat Exporter — Export to Markdown |
-| **Short Name** | Gemini Exporter |
+| Field | Value |
+|-------|-------|
+| **Extension Name** | AI Chat Exporter — Markdown export for Gemini, ChatGPT, Claude, Meta AI, WhatsApp |
+| **Short Name** | AI Chat Exporter |
 | **Category** | Productivity |
 | **Language** | English (Primary), zh-CN (Localized) |
 
 ---
 
-## Short Description (≤132 characters)
+## Short Description (≤132 chars)
 
 ```
-Export Google Gemini conversations to Markdown with images. Save blob uploads, package as ZIP. One click, fully offline.
+Export Gemini, ChatGPT, Claude, Meta AI, WhatsApp and OpenWebUI chats to Markdown with images. One click, fully offline.
 ```
 
 ---
@@ -26,91 +26,75 @@ Export Google Gemini conversations to Markdown with images. Save blob uploads, p
 ## Detailed Description (English)
 
 ```
-🚀 Gemini Chat Exporter — The Missing Export Button for Google Gemini
+🚀 AI Chat Exporter — One export button for every AI you talk to.
 
-Ever had an amazing conversation with Gemini — a detailed code review, an image analysis, a deep research session — only to realize there's no way to export or save it?
+Switching between Gemini, ChatGPT, Claude, Meta AI, WhatsApp and your own OpenWebUI? Every one of them has a different (or missing) export experience. This extension gives them all the same one-click Markdown export.
 
-This extension adds the export feature that Gemini should have built in.
+━━━━━━━━━━━━━━━━━━━━━━
+
+🌐 SUPPORTED SITES
+
+• Gemini (gemini.google.com)
+• ChatGPT (chatgpt.com, chat.openai.com)
+• Claude (claude.ai)
+• Meta AI (meta.ai)
+• WhatsApp Web (web.whatsapp.com) — any contact, including Meta AI
+• OpenWebUI — your own self-hosted instance (add the URL in the popup)
+
+Each site has its own adapter, with multi-layer fallback selectors that survive UI redesigns.
 
 ━━━━━━━━━━━━━━━━━━━━━━
 
 ✨ KEY FEATURES
 
-📝 One-Click Markdown Export
-Export your entire Gemini conversation to clean, well-formatted Markdown. Code blocks, tables, math formulas (LaTeX), and lists are all preserved perfectly.
+📝 Clean Markdown
+Code blocks, tables, math formulas (KaTeX → LaTeX), task lists, citations — all preserved. Claude's "Extended Thinking" is wrapped in a collapsible <details> block.
 
-🖼️ Image Export (Including Your Uploads!)
-Your uploaded images in Gemini use temporary blob: URLs that vanish when you close the tab. This extension captures them before they disappear and embeds them directly in your Markdown — or packages them as separate files in a ZIP.
+🖼️ Image Export
+Captures local uploads (blob: URLs that vanish on tab close) and optionally generated/remote images. Inline as data: URIs or packaged into a ZIP.
 
-📦 ZIP Packaging
-Choose to download your conversation as a single .md file (with inline images) or as a .zip archive with images in a clean folder structure:
-  conversation_title/
-  ├── conversation_title.md
-  └── images/
-      ├── image_001.png
-      └── image_002.jpg
+📋 Copy or Download
+One click to copy the whole conversation, or download as .md / .zip.
 
-📋 Copy to Clipboard
-One click to copy the entire conversation — then paste directly into Claude, ChatGPT, Notion, Obsidian, or any Markdown editor.
+⚙️ Per-Site Configuration
+Toggle any adapter on/off. Add extra domains (ChatGPT mirrors, internal OpenWebUI, private proxies) — the extension requests permission for that origin at runtime, never globally.
 
-⚡ Smart Scroll Loading
-Gemini uses virtual scrolling for long conversations, hiding older messages. This extension automatically scrolls to load ALL messages before exporting — no more missing context.
+⚡ Smart Scrolling
+Auto-scrolls to load all messages. WhatsApp's virtual scroller (which recycles offscreen bubbles) gets a dedicated harvest strategy.
 
-🔒 100% Offline & Private
-Everything runs locally in your browser. No data is sent to any server. No account required. No analytics. Your conversations stay yours.
+🔒 100% Local
+No telemetry. No network calls except fetching the page's own images. End-to-end-encrypted content (WhatsApp) stays in your browser.
 
 ━━━━━━━━━━━━━━━━━━━━━━
 
 🎯 PERFECT FOR
 
-• Feeding Gemini analysis results to Claude or ChatGPT for further reasoning
-• Archiving important conversations for future reference  
-• Building a personal knowledge base in Obsidian or Notion
-• Saving Gemini's image analysis before closing the tab
-• Sharing conversations with teammates
-• Creating documentation from AI-assisted research
-
-━━━━━━━━━━━━━━━━━━━━━━
-
-⚙️ OPTIONS
-
-☑ Auto-scroll: Load all messages in long conversations
-☑ Include images: Capture uploaded and generated images
-☑ Download remote images: Also save AI-generated images
-☑ Package as ZIP: Download as .zip with separate image files
-
-Settings are saved automatically.
+• Feeding one AI's analysis into another
+• Archiving long debugging sessions or research
+• Building a personal knowledge base in Obsidian / Notion
+• Saving WhatsApp Meta AI chats for offline reference
+• Documenting AI-assisted work
 
 ━━━━━━━━━━━━━━━━━━━━━━
 
 🔐 PERMISSIONS EXPLAINED
 
-• "Read and change site data on gemini.google.com": Required to read your conversation from the page. We only access Gemini pages.
-• "Manage downloads": Required to save the exported file to your computer.
-• "Storage": Required to remember your preferences (like checkbox states).
-
-We request the minimum permissions needed. No browsing history, no other websites, no network requests.
+• Host permissions for the six supported sites — only read the chat DOM when you click export.
+• "optional_host_permissions": *://*/* — NOT granted by default; only activates when YOU add a custom OpenWebUI / mirror site in the popup, which triggers Chrome's native permission prompt.
+• "scripting" — inject the per-site adapter on demand.
+• "downloads" — save the .md / .zip to your computer.
+• "storage" — remember checkbox preferences and your custom site list.
+• "clipboardWrite" — for the Copy button.
 
 ━━━━━━━━━━━━━━━━━━━━━━
 
 📖 OPEN SOURCE
 
-This extension is fully open source. Inspect the code, submit issues, or contribute:
 https://github.com/congzhangzh/sorry_gemini
 
 ━━━━━━━━━━━━━━━━━━━━━━
 
-💡 TIPS
-
-• Works best on gemini.google.com (the web version of Gemini)
-• For long conversations (100+ turns), the auto-scroll may take up to 50 seconds
-• If export fails after a Gemini UI update, please file an issue on GitHub
-
-━━━━━━━━━━━━━━━━━━━━━━
-
-Made with ❤️ by a developer who got tired of copying Gemini responses one paragraph at a time.
-
-If this extension saves you time, consider leaving a ⭐ review!
+If this saves you time, please leave a ⭐ review!
 ```
 
 ---
@@ -118,108 +102,108 @@ If this extension saves you time, consider leaving a ⭐ review!
 ## Detailed Description (中文)
 
 ```
-🚀 Gemini Chat Exporter — Google Gemini 缺失的导出按钮
+🚀 AI Chat Exporter — 给所有 AI 加上一键导出
 
-用 Gemini 分析了一张复杂架构图、做了一次深度代码审查、或者进行了一轮长篇研究——然后发现没有办法导出或保存整个对话？
+Gemini、ChatGPT、Claude、Meta AI、WhatsApp、自部署的 OpenWebUI——每家都有不同的导出体验，或者干脆没有。这个扩展给它们统一了一键 Markdown 导出。
 
-这个扩展补上了 Gemini 本该有的导出功能。
+━━━━━━━━━━━━━━━━━━━━━━
+
+🌐 支持站点
+
+• Gemini (gemini.google.com)
+• ChatGPT (chatgpt.com, chat.openai.com)
+• Claude (claude.ai)
+• Meta AI (meta.ai)
+• WhatsApp Web (web.whatsapp.com) — 包括与 Meta AI 联系人的对话
+• OpenWebUI — 自部署实例（在弹窗内添加自己的地址）
+
+每个站点有独立的适配器，多层 fallback 选择器抗 UI 改版。
 
 ━━━━━━━━━━━━━━━━━━━━━━
 
 ✨ 核心功能
 
-📝 一键 Markdown 导出
-将整个 Gemini 对话导出为格式精美的 Markdown。代码块、表格、数学公式（LaTeX）、列表全部完美保留。
+📝 干净的 Markdown
+代码块、表格、数学公式 (KaTeX → LaTeX)、任务列表、引用，全部保留。Claude 的 "Extended Thinking" 自动包裹为可折叠的 <details>。
 
-🖼️ 图片导出（包括你上传的图片！）
-你上传到 Gemini 的图片使用临时的 blob: URL，关闭标签页就消失了。这个扩展在它们消失前捕获并嵌入到 Markdown 中——或打包为 ZIP 中的独立文件。
+🖼️ 图片导出
+捕获本地上传 (关闭页面就消失的 blob: URL)，可选下载生成的远程图片。Markdown 内联或打包 ZIP。
 
-📦 ZIP 打包
-选择下载为单个 .md 文件（图片内联），或下载为 .zip 压缩包：
-  对话标题/
-  ├── 对话标题.md
-  └── images/
-      ├── image_001.png
-      └── image_002.jpg
+📋 复制或下载
+一键复制整段对话，或下载 .md / .zip。
 
-📋 复制到剪贴板
-一键复制整个对话，直接粘贴到 Claude、ChatGPT、Notion、Obsidian 或任何 Markdown 编辑器。
+⚙️ 站点配置
+任一适配器可启用/禁用；可为镜像、内网部署、私有代理添加额外域名——扩展运行时按需申请权限，永不全局持有。
 
-⚡ 智能滚动加载
-Gemini 对长对话使用虚拟滚动，隐藏旧消息。扩展自动滚动加载全部消息后再导出——不遗漏任何内容。
+⚡ 智能滚动
+自动滚动加载全部消息。WhatsApp 的虚拟滚动 (离屏气泡会被回收) 用专门的"边滚边收集"策略处理。
 
-🔒 100% 离线 & 隐私
-所有处理在浏览器本地完成。不向任何服务器发送数据。无需账号。无分析追踪。
-
-━━━━━━━━━━━━━━━━━━━━━━
-
-🎯 适用场景
-
-• 把 Gemini 的分析结果喂给 Claude 做进一步推理
-• 存档重要对话以备将来查阅
-• 在 Obsidian 或 Notion 中构建个人知识库
-• 在关闭页面前保存 Gemini 的图片分析结果
-• 与团队成员分享对话内容
+🔒 100% 本地
+无遥测，无网络请求 (除拉取页面自己的图片)。WhatsApp 的端到端加密内容只在你的浏览器里。
 
 ━━━━━━━━━━━━━━━━━━━━━━
 
 🔐 权限说明
 
-• 读取 gemini.google.com 数据：用于读取对话内容，仅访问 Gemini 页面
-• 管理下载：用于保存导出文件到电脑
-• 存储：用于记住你的偏好设置
-
-我们只申请最少必要权限。不读取浏览记录，不访问其他网站。
+• 6 个支持站点的 host 权限：仅在点击导出时读取对话 DOM
+• optional_host_permissions: *://*/*：默认 **不持有**；仅当你在弹窗里手动添加 OpenWebUI / 镜像站点时,Chrome 弹原生授权框
+• scripting：按需注入对应适配器
+• downloads：保存 .md / .zip 到电脑
+• storage：记忆勾选项与自定义站点列表
+• clipboardWrite：复制按钮使用
 
 ━━━━━━━━━━━━━━━━━━━━━━
 
 📖 完全开源
 https://github.com/congzhangzh/sorry_gemini
-
-如果这个扩展帮你节省了时间，请留下一个 ⭐ 好评！
 ```
 
 ---
 
-## Privacy Policy (Required for Chrome Web Store)
-
-> 必须提供一个可公开访问的隐私政策页面。建议放在 GitHub Pages 或 README 中。
+## Privacy Policy
 
 ```markdown
-# Privacy Policy — Gemini Chat Exporter
+# Privacy Policy — AI Chat Exporter
 
-**Last updated: 2026-03-31**
+**Last updated: 2026-05-12**
 
 ## Data Collection
-Gemini Chat Exporter does NOT collect, store, transmit, or share any user data. Period.
+AI Chat Exporter does NOT collect, store, transmit, or share any user data. Period.
 
 ## How It Works
-- The extension reads conversation content from the Google Gemini web page (gemini.google.com) when you explicitly click the export button.
+- The extension reads the currently visible conversation DOM from the supported AI chat sites — only when you click an export button.
 - All processing (DOM extraction, Markdown conversion, image encoding, ZIP packaging) happens entirely within your browser.
-- No data is sent to any external server, API, or third-party service.
+- No data is sent to any external server, API, or analytics service.
 - Exported files are saved directly to your computer via Chrome's built-in download manager.
 
 ## Permissions Used
 | Permission | Purpose |
 |------------|---------|
-| `activeTab` | Access the current Gemini tab when you click the extension |
-| `scripting` | Inject the content script to read conversation data |
+| `activeTab` | Access the current tab when you click the extension |
+| `scripting` | Inject the per-site adapter on demand |
 | `downloads` | Save exported files to your computer |
-| `storage` | Remember your preference settings (checkboxes) locally |
-| Host permission (`gemini.google.com`) | Only operates on Google Gemini pages |
+| `storage` | Remember preference settings and custom site list locally |
+| `clipboardWrite` | Copy the markdown to your clipboard on demand |
+| Host permissions (gemini.google.com, chatgpt.com, chat.openai.com, claude.ai, meta.ai, web.whatsapp.com) | Read conversations on these specific sites |
+| `optional_host_permissions: *://*/*` | NOT granted by default. Activated only when you explicitly add an OpenWebUI / mirror site through the popup, which triggers Chrome's native permission dialog. You can revoke any added permission from the popup at any time. |
 
 ## Local Storage
-The extension stores only your preference settings (checkbox states) using Chrome's `chrome.storage.local` API. This data never leaves your browser.
+The extension uses `chrome.storage.local` to remember:
+- Your checkbox preferences (auto-scroll, include images, ZIP packaging, etc.)
+- Your `site_bindings` table: which adapters are enabled and which extra domains you've authorized.
+This data never leaves your browser.
 
 ## Third-Party Services
-None. This extension makes zero network requests. All libraries (Turndown, JSZip) are bundled locally.
+None. The extension makes no analytics or telemetry network requests. All libraries (Turndown, JSZip) are bundled locally.
+
+## Network Activity
+The extension only fetches resources that are already part of the AI chat page you're viewing — specifically, image URLs in the conversation, when you've checked "include images" / "download remote images". No other network activity.
 
 ## Open Source
-The complete source code is available for inspection at:
+The complete source code is available at:
 https://github.com/congzhangzh/sorry_gemini
 
 ## Contact
-For questions about this privacy policy, please open an issue on GitHub:
 https://github.com/congzhangzh/sorry_gemini/issues
 ```
 
@@ -227,59 +211,39 @@ https://github.com/congzhangzh/sorry_gemini/issues
 
 ## Screenshots Needed (1280×800 or 640×400)
 
-上架需要至少 1 张截图，建议准备 5 张：
-
-| # | 内容 | 建议文案覆盖 |
-|---|------|-------------|
-| 1 | Popup 界面 + Gemini 页面背景 | "One click to export your Gemini conversations" |
-| 2 | 导出的 Markdown 在 VS Code 中打开 | "Clean Markdown with code blocks, tables, and LaTeX" |
-| 3 | ZIP 文件解压后的目录结构 | "Images saved as separate files in organized folders" |
-| 4 | 复制到剪贴板后粘贴到 Claude | "Feed Gemini's analysis to Claude for deeper reasoning" |
-| 5 | 之前/之后对比：手动复制 vs 一键导出 | "Stop copying one paragraph at a time" |
+| # | Content | Caption |
+|---|---------|---------|
+| 1 | Popup with site-config panel expanded | "One export button for every AI" |
+| 2 | Exported ChatGPT Markdown in VS Code | "Clean Markdown with code, tables, LaTeX" |
+| 3 | WhatsApp Web with Meta AI conversation + popup pill showing "WhatsApp" | "Export Meta AI chats from WhatsApp Web" |
+| 4 | Popup adding a custom OpenWebUI URL | "Plug in your self-hosted OpenWebUI" |
+| 5 | ZIP file structure | "Images as separate files in a clean folder" |
 
 ---
 
-## Promotional Tile Images
+## Promotional Tiles
 
-| 尺寸 | 用途 |
-|------|------|
-| 440×280 | Small promotional tile |
-| 920×680 | Large promotional tile (可选) |
-| 1400×560 | Marquee promotional tile (可选) |
+| Size | Use |
+|------|-----|
+| 440×280 | Small tile |
+| 920×680 | Large tile (optional) |
+| 1400×560 | Marquee (optional) |
 
 ---
 
 ## Publishing Checklist
 
-- [ ] 注册 Chrome Web Store 开发者账号（一次性费用 $5 USD）
-- [ ] 准备隐私政策页面（GitHub Pages 或 README 内）
-- [ ] 截图 5 张（1280×800）
-- [ ] 制作 128×128 高分辨率图标
-- [ ] 打包扩展为 .zip（不含 .git、node_modules、STORE_LISTING.md 等）
-- [ ] 填写商品详情页（使用本文档中的文案）
-- [ ] 提交审核（通常 1-3 个工作日）
-- [ ] 审核通过后发布
+- [ ] Chrome Web Store developer account ($5 one-time)
+- [ ] Privacy policy live (GitHub Pages or repo README)
+- [ ] 5 screenshots (1280×800)
+- [ ] 128×128 high-res icon
+- [ ] Zip the extension (exclude `.git`, `STORE_LISTING.md`, `Chrome Extension MV3 技术报告.md`)
+- [ ] Fill listing using copy above
+- [ ] Highlight the `optional_host_permissions: *://*/*` reasoning under "Single purpose" review — auditors usually ask about wildcard hosts; the answer is "for self-hosted OpenWebUI, user-granted at runtime only"
+- [ ] Submit for review (typically 1-3 business days)
 
-## 变现建议
+---
 
-### 短期（免费策略，积累用户）
-1. 免费上架，在 Popup 底部加一行小字：「☕ Buy me a coffee」链接到 Ko-fi/Buy Me a Coffee
-2. 收款方式：Ko-fi 支持 PayPal + Stripe，可提现到 Wise
-3. 在 GitHub README 加 Sponsor 按钮
+## Notes for the reviewer
 
-### 中期（Freemium，如果用户量 > 1000）
-| 功能 | Free | Pro |
-|------|------|-----|
-| 导出 Markdown | ✅ | ✅ |
-| 复制到剪贴板 | ✅ | ✅ |
-| 内联图片 | ✅ | ✅ |
-| ZIP 打包 | ❌ | ✅ |
-| 远程图片下载 | ❌ | ✅ |
-| 批量导出多个对话 | ❌ | ✅ |
-
-Pro 版可通过 LemonSqueezy / Gumroad 出售 license key，支持 Wise 提现。
-
-### 定价参考（同类工具）
-- ChatGPT Exporter 类工具：大多免费
-- 带图片导出的增强版：$3-5 一次性
-- 建议：**$2.99 一次性购买 Pro**，或「随意赞赏」
+Wildcard `optional_host_permissions: *://*/*` is required so users can authorize their **own self-hosted OpenWebUI** deployment, whose URL is unknown at packaging time. The permission is **never granted automatically** — it activates only after the user explicitly types in a URL inside the popup and clicks "添加 / Add", which triggers Chrome's native permission prompt. The permission can be revoked from the same popup, which calls `chrome.permissions.remove()`. We could narrow to `http://localhost/*` only, but that would block the legitimate use case of users running OpenWebUI on their own servers.
