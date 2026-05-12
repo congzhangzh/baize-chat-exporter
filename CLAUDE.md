@@ -54,7 +54,68 @@ This file's main job is to make that loop fast.
 
 ---
 
-## 3. The Adapter Debugging Playbook
+## 3. First principles (the four meta-rules)
+
+These four rules drive every decision below. If you're about to do
+something that violates one, stop and re-read this section.
+
+### 3.1 The probe is the asset; the adapter is disposable
+
+Adapter code rots. The site changes a class name and your `.message-in`
+selector goes to zero. **Probes don't rot** — "count how many nodes match
+each fallback selector and print a table" is a question that's always
+well-defined, regardless of which selector currently works.
+
+Consequence: when you fix an adapter bug, the value isn't the new
+selector — it's the probe and the failure-history bullet that lets the
+next engineer (or you in three months) reach the same conclusion in
+five minutes instead of an hour. Treat the probe in §4 step 2 as
+production code, not a one-off snippet.
+
+### 3.2 Failure history belongs in source, not in git log
+
+Nobody reads `git log` when debugging. Everybody reads the file header
+when modifying a file. Every non-trivial fix gets a dated bullet under
+"Failure history" in the adapter file header, describing **symptom →
+root cause → fix** in one sentence. This is what turned five separate
+debugging rounds into a single section of `whatsapp.js` today.
+
+The same principle scales: cross-cutting lessons go in
+`docs/ADAPTER_NOTES.md`; meta-lessons about the workflow itself go
+here in `CLAUDE.md`.
+
+### 3.3 Convert silent failure into observable failure
+
+The reason adapter bugs are expensive is that they fail *silently* —
+`querySelectorAll` returns `[]` and we report "no conversation
+content found" with no clue why. The cure is mechanical:
+
+- **Two fallback layers minimum** per critical selector.
+- **Every layer logs its hit count** under `AI_EXPORTER_DEBUG=1`.
+- **Resolved panel logs `tagName + id + key attributes`**, not just
+  the element reference — `panel = mask#main` is diagnostic;
+  `panel = [object Element]` is useless.
+
+Once a failure has fingerprints in the console, the rest of the
+playbook is mechanical pattern-matching.
+
+### 3.4 Anchor dedup keys to elements that exist when virtualized
+
+Virtualized lists (WhatsApp, modern ChatGPT) only fully render bubbles
+near the viewport; the rest are placeholders. **The id you dedup by
+must live on an element that exists in both states.** WhatsApp's
+`data-id` lives on the OUTER `[data-testid^="conv-msg-*"]` wrapper —
+present in both states — and not on the INNER `.message-in/.message-out`,
+which only exists after materialization. Get this wrong and you'll
+silently drop half the conversation.
+
+General rule: when designing a dedup key for a virtualized list, **open
+DevTools, scroll a target bubble out of view, and verify the proposed
+key still resolves**. If it doesn't, find an outer ancestor that does.
+
+---
+
+## 4. The Adapter Debugging Playbook
 
 Run these in order. **Do not skip steps** — every step builds evidence
 that constrains the fix.
@@ -239,7 +300,7 @@ trap. **This is non-negotiable.**
 
 ---
 
-## 4. Cardinal rules for adapter code
+## 5. Cardinal rules for adapter code
 
 These came out of real production bugs. Each one has at least one
 incident behind it (see whatsapp.js failure history for receipts).
@@ -269,7 +330,7 @@ Full priority table and rationale: [`docs/ADAPTER_NOTES.md`](docs/ADAPTER_NOTES.
 
 ---
 
-## 5. Code conventions
+## 6. Code conventions
 
 - **Comments in English.** This is a community project — keep the
   source approachable to non-Chinese-speaking contributors. (Chat with
@@ -293,7 +354,7 @@ Full priority table and rationale: [`docs/ADAPTER_NOTES.md`](docs/ADAPTER_NOTES.
 
 ---
 
-## 6. Committing
+## 7. Committing
 
 The user explicitly OK's commits. Don't auto-commit. When asked:
 
@@ -306,7 +367,7 @@ The user explicitly OK's commits. Don't auto-commit. When asked:
 
 ---
 
-## 7. Quick reference — files you'll likely touch
+## 8. Quick reference — files you'll likely touch
 
 | File | When to touch |
 |---|---|

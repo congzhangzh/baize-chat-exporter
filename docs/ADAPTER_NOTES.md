@@ -117,14 +117,52 @@ Many chat apps recycle offscreen DOM. Markers to look for:
 - A scroll container with `scrollHeight >> clientHeight` but very few
   message DOM nodes
 
-If you detect virtualization, you cannot harvest in one pass. Pattern:
+### 4.1 Dedup anchor rule (critical)
+
+**The id you dedup by must live on an element that exists in both
+materialized and virtualized states.** Most sites have a stable OUTER
+wrapper carrying the id (`[data-testid^="conv-msg-"]` on WhatsApp) and
+an INNER row that only appears when the bubble is on screen
+(`.message-in / .message-out`). Dedup against the outer; harvest
+content from the inner only when present.
+
+How to verify: open DevTools, find a bubble outside the viewport, and
+check that your chosen dedup attribute is still in its DOM. If it isn't,
+walk up to an ancestor that survives.
+
+Failure mode if you get this wrong: `collected.size` grows during
+scroll but is much smaller than the true message count, and the
+exported markdown has gaps. This was the WhatsApp `data-id` bug of
+2026-05 — `getAttribute('data-id')` was called on the inner row, which
+has no `data-id`, so dedup silently kept overwriting `undefined`.
+
+### 4.2 Sweep strategy
+
+A two-jump scroll (top → bottom) only materializes the top and bottom;
+middle bubbles never render. Use an **incremental sweep**:
+
+```
+scroller.scrollTop = 0
+loop:
+  collect()
+  scroller.scrollTop += clientHeight * 0.75
+  await one frame + ~250ms
+  break if scroll position unchanged or no new bubbles for N ticks
+scroller.scrollTop = scrollHeight  // final pass
+collect()
+```
+
+If the scroller has snap-points or sticky headers, dispatch a synthetic
+`scroll` event after each `scrollTop` write — some sites only
+materialize on the event, not the property write.
+
+### 4.3 Skeleton
 
 ```js
-async scrollToLoadMore() {
-  const collected = new Map();  // dedupe by data-id
-  // Pass 1: scroll to top, harvest as history loads
-  // Pass 2: scroll to bottom, harvest recent messages
-  // Stop when N consecutive ticks add nothing.
+async scrollToLoadMore(onProgress) {
+  const collected = new Map();  // keyed by outer-wrapper id
+  // incremental sweep (see 4.2)
+  // call onProgress({ count, total }) per tick if known
 }
 ```
 
