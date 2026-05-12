@@ -124,6 +124,15 @@ popup/
 }
 ```
 
+> **Adapter authors / debuggers:** start at [`CLAUDE.md`](CLAUDE.md) — the
+> handbook for humans and AI agents working on this codebase. It contains
+> the **6-step debugging playbook** with copy-pasteable console probes
+> for diagnosing a broken adapter against a live site in under 15 minutes.
+> Then read [`docs/ADAPTER_NOTES.md`](docs/ADAPTER_NOTES.md) for the
+> anchor-priority rules, the "panel trap" failure mode, the
+> virtual-scroll harvest pattern, and the diagnostic toggle
+> (`localStorage.AI_EXPORTER_DEBUG='1'`).
+
 ### Selector hardening
 
 Every selector field is an **array of fallbacks** in priority order. Stability ranking:
