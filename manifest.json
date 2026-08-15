@@ -19,7 +19,17 @@
     "https://grok.com/*",
     "https://meta.ai/*",
     "https://www.meta.ai/*",
-    "https://web.whatsapp.com/*"
+    "https://web.whatsapp.com/*",
+    "https://www.doubao.com/*",
+    "https://doubao.com/*",
+    "https://www.kimi.com/*",
+    "https://kimi.com/*",
+    "https://kimi.moonshot.cn/*",
+    "https://chatglm.cn/*",
+    "https://www.chatglm.cn/*",
+    "https://yuanbao.tencent.com/*",
+    "https://www.perplexity.ai/*",
+    "https://perplexity.ai/*"
   ],
   "optional_host_permissions": [
     "https://*/*",
@@ -104,6 +114,61 @@
         "lib/turndown-plugin-gfm.min.js",
         "content/adapter-registry.js",
         "content/adapters/whatsapp.js",
+        "content/content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.doubao.com/*", "https://doubao.com/*"],
+      "js": [
+        "lib/turndown.min.js",
+        "lib/turndown-plugin-gfm.min.js",
+        "content/adapter-registry.js",
+        "content/adapters/doubao.js",
+        "content/content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.kimi.com/*", "https://kimi.com/*", "https://kimi.moonshot.cn/*"],
+      "js": [
+        "lib/turndown.min.js",
+        "lib/turndown-plugin-gfm.min.js",
+        "content/adapter-registry.js",
+        "content/adapters/kimi.js",
+        "content/content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://chatglm.cn/*", "https://www.chatglm.cn/*"],
+      "js": [
+        "lib/turndown.min.js",
+        "lib/turndown-plugin-gfm.min.js",
+        "content/adapter-registry.js",
+        "content/adapters/chatglm.js",
+        "content/content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://yuanbao.tencent.com/*"],
+      "js": [
+        "lib/turndown.min.js",
+        "lib/turndown-plugin-gfm.min.js",
+        "content/adapter-registry.js",
+        "content/adapters/yuanbao.js",
+        "content/content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.perplexity.ai/*", "https://perplexity.ai/*"],
+      "js": [
+        "lib/turndown.min.js",
+        "lib/turndown-plugin-gfm.min.js",
+        "content/adapter-registry.js",
+        "content/adapters/perplexity.js",
         "content/content.js"
       ],
       "run_at": "document_idle"

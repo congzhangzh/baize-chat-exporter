@@ -85,24 +85,21 @@ Selector hints below are starting guesses for whoever picks up each adapter. Ope
 | Site | URL | Selector hint | Status |
 |------|-----|---------------|--------|
 | DeepSeek | `chat.deepseek.com` | similar to ChatGPT layout | community-wanted |
-| 豆包 Doubao | `doubao.com` | `[data-testid*="message"]`, `.receive-message` / `.send-message` | community-wanted |
-| 腾讯元宝 Yuanbao (Hunyuan) | `yuanbao.tencent.com` | TBD | community-wanted |
-| Kimi | `kimi.com`, `kimi.moonshot.cn` | `.chat-content`, role-based message blocks | community-wanted |
-| 智谱清言 ChatGLM | `chatglm.cn` | `[data-message-id]`, `.user-msg` / `.bot-msg` | community-wanted |
 | 通义千问 Qwen | `tongyi.aliyun.com`, `chat.qwen.ai` | `.qa-pair`, `.question` / `.answer` | community-wanted |
 | 文心一言 Wenxin | `yiyan.baidu.com` | dialog-list custom elements | community-wanted |
 | 讯飞星火 Spark | `xinghuo.xfyun.cn` | role-prefixed message divs | community-wanted |
-| MiniMax 海螺 | `hailuoai.com` | message list with role distinction | community-wanted |
+| MiniMax | `hailuoai.com` pivoted to video (2026); current chat entry TBD | verify product first | community-wanted |
 | 阶跃跃问 StepFun | `yuewen.cn` | TBD | community-wanted |
 | 零一万物 01.AI | `wanzhi.lingyiwanwu.com` | TBD | community-wanted |
 | 百小应 Baichuan | `ying.baichuan-ai.com` (verify) | TBD | community-wanted |
+
+(Doubao, Kimi, ChatGLM and Tencent Yuanbao SHIPPED 2026-08-15 — selectors live-verified.)
 
 **English ecosystem**:
 
 | Site | URL | Selector hint | Status |
 |------|-----|---------------|--------|
-| HuggingChat | `huggingface.co/chat` | `[role="article"]`, prose markdown blocks | community-wanted |
-| Perplexity | `perplexity.ai` | `.prose`, source-cited answer cards | community-wanted |
+| HuggingChat | `huggingface.co/chat` | now requires HF login; `[role="article"]`, prose markdown blocks | community-wanted |
 | Grok on X | `x.com/i/grok` | X integration uses a different DOM tree than grok.com (which is now SUPPORTED, 2026-08-15). The enterprise "Grok Bot" agent product is out of scope | community-wanted |
 | Character.AI | `character.ai` | persona chat platform, ~20M MAU; message-list DOM, TBD | community-wanted |
 | Mistral Le Chat | `chat.mistral.ai` | TBD | community-wanted |

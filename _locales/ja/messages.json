@@ -1,6 +1,6 @@
 {
   "appName": { "message": "白沢 BaiZe — AI チャットエクスポート" },
-  "appDesc": { "message": "Gemini、ChatGPT、Claude、Grok、Meta AI、WhatsApp Web、OpenWebUI の会話をワンクリックで Markdown にエクスポート。完全ローカル動作。" },
+  "appDesc": { "message": "ChatGPT、Claude、Gemini、Grok、Kimi、豆包などの AI チャットをワンクリックで Markdown にエクスポート。完全ローカル動作。" },
   "slogan": { "message": "あらゆるAIから学び、自分の知恵を育てる" },
 
   "siteUnknown": { "message": "未対応のサイト" },

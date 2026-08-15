@@ -55,6 +55,46 @@ const DEFAULT_SITE_BINDINGS = [
     dynamic: false
   },
   {
+    adapter: 'doubao',
+    displayName: 'Doubao',
+    enabled: true,
+    defaults: ['https://www.doubao.com/*', 'https://doubao.com/*'],
+    extra: [],
+    dynamic: false
+  },
+  {
+    adapter: 'kimi',
+    displayName: 'Kimi',
+    enabled: true,
+    defaults: ['https://www.kimi.com/*', 'https://kimi.com/*', 'https://kimi.moonshot.cn/*'],
+    extra: [],
+    dynamic: false
+  },
+  {
+    adapter: 'chatglm',
+    displayName: 'ChatGLM',
+    enabled: true,
+    defaults: ['https://chatglm.cn/*', 'https://www.chatglm.cn/*'],
+    extra: [],
+    dynamic: false
+  },
+  {
+    adapter: 'yuanbao',
+    displayName: 'Yuanbao',
+    enabled: true,
+    defaults: ['https://yuanbao.tencent.com/*'],
+    extra: [],
+    dynamic: false
+  },
+  {
+    adapter: 'perplexity',
+    displayName: 'Perplexity',
+    enabled: true,
+    defaults: ['https://www.perplexity.ai/*', 'https://perplexity.ai/*'],
+    extra: [],
+    dynamic: false
+  },
+  {
     adapter: 'openwebui',
     displayName: 'OpenWebUI',
     enabled: true,
@@ -71,6 +111,11 @@ const ADAPTER_FILE = {
   grok: 'content/adapters/grok.js',
   meta: 'content/adapters/meta.js',
   whatsapp: 'content/adapters/whatsapp.js',
+  doubao: 'content/adapters/doubao.js',
+  kimi: 'content/adapters/kimi.js',
+  chatglm: 'content/adapters/chatglm.js',
+  yuanbao: 'content/adapters/yuanbao.js',
+  perplexity: 'content/adapters/perplexity.js',
   openwebui: 'content/adapters/openwebui.js'
 };
 

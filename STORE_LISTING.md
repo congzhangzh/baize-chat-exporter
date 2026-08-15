@@ -40,6 +40,11 @@ Switching between Gemini, ChatGPT, Claude, Meta AI, WhatsApp and your own OpenWe
 • ChatGPT (chatgpt.com, chat.openai.com)
 • Claude (claude.ai)
 • Grok (grok.com)
+• Kimi (kimi.com)
+• Doubao 豆包 (doubao.com)
+• ChatGLM 智谱清言 (chatglm.cn)
+• Tencent Yuanbao 腾讯元宝 (yuanbao.tencent.com)
+• Perplexity (perplexity.ai)
 • Meta AI (meta.ai)
 • WhatsApp Web (web.whatsapp.com) — any contact, including Meta AI
 • OpenWebUI — your own self-hosted instance (add the URL in the popup)
@@ -84,8 +89,8 @@ No telemetry. No network calls except fetching the page's own images. End-to-end
 
 More adapters are added on demand, not in big batches. Currently in the queue:
 
-Chinese: DeepSeek · Doubao · Tencent Yuanbao (Hunyuan) · Kimi · Zhipu (ChatGLM) · Qwen · Wenxin · Spark · MiniMax · StepFun · 01.AI · Baichuan
-English: HuggingChat · Perplexity · Grok on X (x.com) · Mistral Le Chat · Microsoft Copilot · Pi · Character.AI
+Chinese: DeepSeek · Qwen · Wenxin · Spark · MiniMax · StepFun · 01.AI · Baichuan
+English: HuggingChat · Grok on X (x.com) · Mistral Le Chat · Microsoft Copilot · Pi · Character.AI
 
 If a site you care about is on this list, you can sponsor faster delivery (links inside the popup).
 
@@ -93,7 +98,7 @@ If a site you care about is on this list, you can sponsor faster delivery (links
 
 🔐 PERMISSIONS EXPLAINED
 
-• Host permissions for the seven supported sites — extension code is present on those sites; conversation content is read only when you click export.
+• Host permissions for the twelve supported sites — extension code is present on those sites; conversation content is read only when you click export.
 • "optional_host_permissions": https://*/* and http://localhost/* — NOT granted by default; only activates when YOU add a custom OpenWebUI / mirror site in the popup, one origin at a time, through Chrome's native permission prompt.
 • "scripting" — inject the per-site adapter on demand.
 • "downloads" — save the .md / .zip to your computer.
@@ -132,6 +137,11 @@ Gemini、ChatGPT、Claude、Meta AI、WhatsApp、自部署的 OpenWebUI——每
 • ChatGPT (chatgpt.com, chat.openai.com)
 • Claude (claude.ai)
 • Grok (grok.com)
+• Kimi (kimi.com)
+• 豆包 (doubao.com)
+• 智谱清言 (chatglm.cn)
+• 腾讯元宝 (yuanbao.tencent.com)
+• Perplexity (perplexity.ai)
 • Meta AI (meta.ai)
 • WhatsApp Web (web.whatsapp.com) — 包括与 Meta AI 联系人的对话
 • OpenWebUI — 自部署实例（在弹窗内添加自己的地址）
@@ -166,8 +176,8 @@ Gemini、ChatGPT、Claude、Meta AI、WhatsApp、自部署的 OpenWebUI——每
 
 新适配器按真实需求添加,不批量上线。当前 Roadmap:
 
-中文圈: DeepSeek · 豆包 · 腾讯元宝(混元) · Kimi · 智谱清言 · 通义千问 · 文心一言 · 讯飞星火 · MiniMax 海螺 · 阶跃跃问 · 零一万物 · 百小应
-英文圈: HuggingChat · Perplexity · Grok on X (x.com) · Mistral Le Chat · Microsoft Copilot · Pi · Character.AI
+中文圈: DeepSeek · 通义千问 · 文心一言 · 讯飞星火 · MiniMax · 阶跃跃问 · 零一万物 · 百小应
+英文圈: HuggingChat · Grok on X (x.com) · Mistral Le Chat · Microsoft Copilot · Pi · Character.AI
 
 如果你关注的站点在列表上,可以通过 popup 内的赞助链接让它优先上线。
 
@@ -175,7 +185,7 @@ Gemini、ChatGPT、Claude、Meta AI、WhatsApp、自部署的 OpenWebUI——每
 
 🔐 权限说明
 
-• 7 个支持站点的 host 权限：扩展代码会随页面加载,但对话内容仅在你点击导出时才被读取
+• 12 个支持站点的 host 权限：扩展代码会随页面加载,但对话内容仅在你点击导出时才被读取
 • optional_host_permissions: https://*/* 与 http://localhost/*：默认 **不持有**；仅当你在弹窗里手动添加 OpenWebUI / 镜像站点时,Chrome 弹原生授权框,逐个域名授权
 • scripting：按需注入对应适配器
 • downloads：保存 .md / .zip 到电脑
