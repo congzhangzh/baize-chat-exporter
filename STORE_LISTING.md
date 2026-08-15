@@ -1,6 +1,6 @@
-# Chrome Web Store Listing — AI Chat Exporter
+# Chrome Web Store Listing — BaiZe (AI Chat Exporter)
 
-> Copy material for the Chrome Web Store submission of the multi-site AI Chat Exporter (v2.0+).
+> Copy material for the Chrome Web Store submission of BaiZe — AI Chat Exporter (v2.0+).
 
 ---
 
@@ -8,10 +8,10 @@
 
 | Field | Value |
 |-------|-------|
-| **Extension Name** | AI Chat Exporter — Markdown export for Gemini, ChatGPT, Claude, Meta AI, WhatsApp |
-| **Short Name** | AI Chat Exporter |
+| **Extension Name** | BaiZe — AI Chat Exporter: Markdown for Gemini, ChatGPT, Claude, WhatsApp |
+| **Short Name** | BaiZe |
 | **Category** | Productivity |
-| **Language** | English (Primary), zh-CN (Localized) |
+| **Language** | English (Primary), zh-CN (Localized). The extension UI also ships ja/ko locales; ja/ko store listings are deferred to community contribution. |
 
 ---
 
@@ -26,7 +26,9 @@ Draw from every AI; grow your own intelligence. Export Gemini, ChatGPT, Claude, 
 ## Detailed Description (English)
 
 ```
-🚀 AI Chat Exporter — Draw from every AI; grow your own intelligence.
+🚀 BaiZe (白泽) — Draw from every AI; grow your own intelligence.
+
+Named after Bai Ze, the all-knowing beast of Chinese mythology who dictated the knowledge of every creature to the Yellow Emperor — history's first knowledge export. This extension does the same for your AI conversations.
 
 Switching between Gemini, ChatGPT, Claude, Meta AI, WhatsApp and your own OpenWebUI? Every one of them has a different (or missing) export experience. This extension gives them all the same one-click Markdown export.
 
@@ -90,8 +92,8 @@ If a site you care about is on this list, you can sponsor faster delivery (links
 
 🔐 PERMISSIONS EXPLAINED
 
-• Host permissions for the six supported sites — only read the chat DOM when you click export.
-• "optional_host_permissions": *://*/* — NOT granted by default; only activates when YOU add a custom OpenWebUI / mirror site in the popup, which triggers Chrome's native permission prompt.
+• Host permissions for the six supported sites — extension code is present on those sites; conversation content is read only when you click export.
+• "optional_host_permissions": https://*/* and http://localhost/* — NOT granted by default; only activates when YOU add a custom OpenWebUI / mirror site in the popup, one origin at a time, through Chrome's native permission prompt.
 • "scripting" — inject the per-site adapter on demand.
 • "downloads" — save the .md / .zip to your computer.
 • "storage" — remember checkbox preferences and your custom site list.
@@ -115,7 +117,9 @@ If this saves you time, please leave a ⭐ review!
 ## Detailed Description (中文)
 
 ```
-🚀 AI Chat Exporter — 汲百家所长，长出你自己的智慧
+🚀 白泽 — 汲百家所长，长出你自己的智慧
+
+取名自《山海经》传统中通晓万物的神兽白泽——它向黄帝口述天下万物之情状，被记录为《白泽图》，堪称史上第一次"知识导出"。这个扩展为你的 AI 对话做同样的事。
 
 Gemini、ChatGPT、Claude、Meta AI、WhatsApp、自部署的 OpenWebUI——每家都有不同的导出体验，或者干脆没有。这个扩展给它们统一了一键 Markdown 导出。
 
@@ -169,8 +173,8 @@ Gemini、ChatGPT、Claude、Meta AI、WhatsApp、自部署的 OpenWebUI——每
 
 🔐 权限说明
 
-• 6 个支持站点的 host 权限：仅在点击导出时读取对话 DOM
-• optional_host_permissions: *://*/*：默认 **不持有**；仅当你在弹窗里手动添加 OpenWebUI / 镜像站点时,Chrome 弹原生授权框
+• 6 个支持站点的 host 权限：扩展代码会随页面加载,但对话内容仅在你点击导出时才被读取
+• optional_host_permissions: https://*/* 与 http://localhost/*：默认 **不持有**；仅当你在弹窗里手动添加 OpenWebUI / 镜像站点时,Chrome 弹原生授权框,逐个域名授权
 • scripting：按需注入对应适配器
 • downloads：保存 .md / .zip 到电脑
 • storage：记忆勾选项与自定义站点列表
@@ -189,15 +193,15 @@ https://github.com/congzhangzh/sorry_gemini
 ## Privacy Policy
 
 ```markdown
-# Privacy Policy — AI Chat Exporter
+# Privacy Policy — BaiZe (AI Chat Exporter)
 
-**Last updated: 2026-05-12**
+**Last updated: 2026-08-14**
 
 ## Data Collection
-AI Chat Exporter does NOT collect, store, transmit, or share any user data. Period.
+BaiZe (AI Chat Exporter) does NOT collect, store, transmit, or share any user data. Period.
 
 ## How It Works
-- The extension reads the currently visible conversation DOM from the supported AI chat sites — only when you click an export button.
+- Extension code is present on the supported AI chat sites (declared content scripts); conversation content is read from the DOM only when you click an export button.
 - All processing (DOM extraction, Markdown conversion, image encoding, ZIP packaging) happens entirely within your browser.
 - No data is sent to any external server, API, or analytics service.
 - Exported files are saved directly to your computer via Chrome's built-in download manager.
@@ -211,7 +215,7 @@ AI Chat Exporter does NOT collect, store, transmit, or share any user data. Peri
 | `storage` | Remember preference settings and custom site list locally |
 | `clipboardWrite` | Copy the markdown to your clipboard on demand |
 | Host permissions (gemini.google.com, chatgpt.com, chat.openai.com, claude.ai, meta.ai, web.whatsapp.com) | Read conversations on these specific sites |
-| `optional_host_permissions: *://*/*` | NOT granted by default. Activated only when you explicitly add an OpenWebUI / mirror site through the popup, which triggers Chrome's native permission dialog. You can revoke any added permission from the popup at any time. |
+| `optional_host_permissions: https://*/*, http://localhost/*` | NOT granted by default. Activated only when you explicitly add an OpenWebUI / mirror site through the popup, one origin at a time, which triggers Chrome's native permission dialog. You can revoke any added permission from the popup at any time. |
 
 ## Local Storage
 The extension uses `chrome.storage.local` to remember:
@@ -232,6 +236,17 @@ https://github.com/congzhangzh/sorry_gemini
 ## Contact
 https://github.com/congzhangzh/sorry_gemini/issues
 ```
+
+---
+
+## CWS Data-Disclosure Form
+
+Declare **Personal communications**: the extension processes chat conversations
+— including WhatsApp Web messages, which are personal communications — strictly
+locally and only at the user's explicit request (clicking an export button).
+Nothing is collected, transmitted, or sold; exported files (including the
+optional plaintext spool copies in `Downloads/ai-chat-spool/`) stay on the
+user's own machine. All other categories: not collected.
 
 ---
 
@@ -272,8 +287,8 @@ https://github.com/congzhangzh/sorry_gemini/issues
 
 ## Notes for the reviewer
 
-Wildcard `optional_host_permissions: *://*/*` is required so users can authorize their **own self-hosted OpenWebUI** deployment, whose URL is unknown at packaging time. The permission is **never granted automatically** — it activates only after the user explicitly types in a URL inside the popup and clicks "添加 / Add", which triggers Chrome's native permission prompt. The permission can be revoked from the same popup, which calls `chrome.permissions.remove()`. We could narrow to `http://localhost/*` only, but that would block the legitimate use case of users running OpenWebUI on their own servers.
+`optional_host_permissions: ["https://*/*", "http://localhost/*"]` is required so users can authorize their **own self-hosted OpenWebUI** deployment, whose URL is unknown at packaging time (plus plain-HTTP localhost for local instances). The permission is **never granted automatically** — it activates only after the user explicitly types in a URL inside the popup and clicks "Add", which triggers Chrome's native permission prompt for that single origin. The permission can be revoked from the same popup, which calls `chrome.permissions.remove()`. Narrowing further (e.g. localhost-only) would block the legitimate use case of users running OpenWebUI on their own servers.
 
-The optional "spool bucket" checkbox writes an extra `.md` copy of each export to `~/Downloads/ai-chat-spool/<timestamp>-<adapter>-<title>.md` using the regular `chrome.downloads.download` API. This is local-only and does not perform any network requests; it exists so an external MCP server (independent npm package, separate distribution) can pick up conversation history without coupling to the extension.
+The optional "spool bucket" checkbox writes an extra plaintext `.md` copy of each export to `~/Downloads/ai-chat-spool/<timestamp>-<adapter>-<title>.md` using the regular `chrome.downloads.download` API (the popup hint states it is unencrypted and never auto-deleted). This is local-only and does not perform any network requests; it exists so an external MCP server (independent npm package, separate distribution) can pick up conversation history without coupling to the extension.
 
 Sponsorship links in the popup open `github.com/sponsors/...` and `ko-fi.com/...` in a regular browser tab. No in-extension payment, no embedded checkout, no license-key validation. All extension functionality remains free.

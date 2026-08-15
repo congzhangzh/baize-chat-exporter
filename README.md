@@ -1,10 +1,12 @@
-# AI Chat Exporter
+# BaiZe — AI Chat Exporter
 
 > **汲百家所长，长出你自己的智慧** · *Draw from every AI; grow your own intelligence.*
 
-One-click export for conversations from **Gemini, ChatGPT, Claude, Meta AI, WhatsApp Web** (Meta AI or any contact), and **self-hosted OpenWebUI** — to clean, image-embedded Markdown.
+**白泽 (BaiZe)** is the all-knowing beast of the *Shan Hai Jing* (Classic of Mountains and Seas) tradition: it dictated the knowledge of all 11,520 creatures of the world to the Yellow Emperor, who had it recorded as the *Bai Ze Tu* — history's first knowledge export. This extension does the same for your AI conversations.
 
-Originally born as *Gemini Chat Exporter*. Now a generic per-site adapter framework: every site is a tiny adapter file. The next site you add is one `content/adapters/<name>.js` away.
+One-click export for conversations from **Gemini, ChatGPT, Claude, Meta AI, WhatsApp Web** (Meta AI or any contact), and **self-hosted OpenWebUI** — to clean, image-embedded Markdown. UI in English, 中文, 日本語 and 한국어.
+
+Originally born as *Gemini Chat Exporter* (hence the repo name `sorry_gemini`). Now a generic per-site adapter framework: every site is a tiny adapter file. The next site you add is one `content/adapters/<name>.js` away.
 
 ---
 
@@ -78,7 +80,7 @@ I can answer questions, help write, analyze images...
 - **Inline (default)**: images become `data:image/...;base64,...` URIs embedded directly in the Markdown. Single file, paste anywhere.
 - **ZIP**: download a `.zip` with `your_title/your_title.md` plus `your_title/images/image_001.png` style siblings.
 
-Local uploads (`blob:` URLs) always work; remote images are gated behind the "下载远程图片" / "Download remote images" checkbox to avoid surprise CORS hits.
+Local uploads (`blob:` URLs) always work; remote images are gated behind the **Download remote images** checkbox to avoid surprise CORS hits.
 
 ---
 
@@ -167,9 +169,9 @@ Every adapter can be enabled/disabled and bound to **extra domains** at runtime 
 }
 ```
 
-In the popup, expand **"站点配置"** to:
+In the popup, expand **Site configuration** to:
 - Toggle any built-in adapter on/off (disabled adapters silently no-op even on their default domains)
-- Add an `extra` pattern — clicking "添加" triggers `chrome.permissions.request({origins: [...]})` synchronously inside the click handler; Chrome shows its native prompt
+- Add an `extra` pattern — clicking **Add** triggers `chrome.permissions.request({origins: [...]})` synchronously inside the click handler; Chrome shows its native prompt
 - Remove an `extra` pattern — calls `chrome.permissions.remove(...)` to revoke
 
 **Limitations** (intentional, for safety):
@@ -178,15 +180,25 @@ In the popup, expand **"站点配置"** to:
 
 ---
 
-## Install (developer mode)
+## Installation
 
-1. Clone this repo
-2. Open `chrome://extensions`
-3. Toggle **Developer mode**
-4. Click **Load unpacked**
-5. Select this folder
+### From the Chrome Web Store (recommended, coming soon)
 
-Works on any Chromium browser: Chrome, Edge, Brave, Opera, Arc, Vivaldi — zero modifications. See *Browser compatibility* below for Firefox status.
+The store listing is being prepared. Once it is live:
+
+1. Open the Chrome Web Store page (link will appear here) and click **Add to Chrome**.
+2. **Edge**: the Chrome Web Store works there too — open `edge://extensions`, enable **Allow extensions from other stores**, then install from the same store page. (A native Edge Add-ons listing may follow.)
+3. **Brave / Opera / Vivaldi / Arc**: install straight from the Chrome Web Store, no extra steps.
+
+### Manual install (available now)
+
+1. Download the latest release ZIP from [Releases](https://github.com/congzhangzh/sorry_gemini/releases) and extract it — or `git clone` this repo.
+2. Open `chrome://extensions` (`edge://extensions` on Edge; the equivalent page on other Chromium browsers).
+3. Toggle **Developer mode** (top-right corner).
+4. Click **Load unpacked**.
+5. Select the extracted/cloned folder — the one containing `manifest.json`.
+
+The extension icon appears in the toolbar; pin it for one-click access. Firefox is not supported yet — see *Browser compatibility* below.
 
 ---
 
@@ -213,7 +225,7 @@ Want one of these prioritized? See [Sponsor a site](#sponsor-a-site) below.
 
 ## MCP integration (preview)
 
-Enable the **"同步写入 spool 桶"** checkbox in the popup. Every export then also writes a `.md` copy into `~/Downloads/ai-chat-spool/` with this naming scheme:
+Enable the **Also write to spool bucket** checkbox in the popup. Every export then also writes a plaintext `.md` copy into `~/Downloads/ai-chat-spool/` — unencrypted and never auto-deleted, so treat that folder as part of your local archive. Naming scheme:
 
 ```
 ai-chat-spool/
@@ -253,7 +265,7 @@ After sponsoring, open an issue tagged `sponsored-adapter` and tell me which sit
 
 100% local. No telemetry. No network requests beyond the page's own images (only when you ask, gated by "Download remote images"). WhatsApp content is end-to-end encrypted on the wire — this extension only reads what's already rendered to your own DOM.
 
-`optional_host_permissions: ["*://*/*"]` is declared in the manifest **but not granted by default** — it only activates when you explicitly add an OpenWebUI / mirror site in the popup.
+`optional_host_permissions: ["https://*/*", "http://localhost/*"]` is declared in the manifest **but not granted by default** — it only activates when you explicitly add an OpenWebUI / mirror site in the popup, one origin at a time, through Chrome's native permission prompt.
 
 ---
 
