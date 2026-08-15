@@ -99,7 +99,6 @@ Selector hints below are starting guesses for whoever picks up each adapter. Ope
 
 | Site | URL | Selector hint | Status |
 |------|-----|---------------|--------|
-| HuggingChat | `huggingface.co/chat` | now requires HF login; `[role="article"]`, prose markdown blocks | community-wanted |
 | Grok on X | `x.com/i/grok` | X integration uses a different DOM tree than grok.com (which is now SUPPORTED, 2026-08-15). The enterprise "Grok Bot" agent product is out of scope | community-wanted |
 | Character.AI | `character.ai` | persona chat platform, ~20M MAU; message-list DOM, TBD | community-wanted |
 | Mistral Le Chat | `chat.mistral.ai` | TBD | community-wanted |

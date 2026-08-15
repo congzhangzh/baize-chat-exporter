@@ -95,6 +95,14 @@ const DEFAULT_SITE_BINDINGS = [
     dynamic: false
   },
   {
+    adapter: 'huggingchat',
+    displayName: 'HuggingChat',
+    enabled: true,
+    defaults: ['https://huggingface.co/chat*'],
+    extra: [],
+    dynamic: false
+  },
+  {
     adapter: 'openwebui',
     displayName: 'OpenWebUI',
     enabled: true,
@@ -116,6 +124,7 @@ const ADAPTER_FILE = {
   chatglm: 'content/adapters/chatglm.js',
   yuanbao: 'content/adapters/yuanbao.js',
   perplexity: 'content/adapters/perplexity.js',
+  huggingchat: 'content/adapters/huggingchat.js',
   openwebui: 'content/adapters/openwebui.js'
 };
 
