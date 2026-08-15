@@ -83,8 +83,8 @@ No telemetry. No network calls except fetching the page's own images. End-to-end
 
 More adapters are added on demand, not in big batches. Currently in the queue:
 
-Chinese: Doubao · Kimi · Zhipu (ChatGLM) · Qwen · Wenxin · Spark · MiniMax · StepFun · 01.AI
-English: HuggingChat · Perplexity · DeepSeek · Grok · Mistral Le Chat · Microsoft Copilot · Pi
+Chinese: DeepSeek · Doubao · Tencent Yuanbao (Hunyuan) · Kimi · Zhipu (ChatGLM) · Qwen · Wenxin · Spark · MiniMax · StepFun · 01.AI · Baichuan
+English: HuggingChat · Perplexity · Grok · Mistral Le Chat · Microsoft Copilot · Pi
 
 If a site you care about is on this list, you can sponsor faster delivery (links inside the popup).
 
@@ -164,8 +164,8 @@ Gemini、ChatGPT、Claude、Meta AI、WhatsApp、自部署的 OpenWebUI——每
 
 新适配器按真实需求添加,不批量上线。当前 Roadmap:
 
-中文圈: 豆包 · Kimi · 智谱清言 · 通义千问 · 文心一言 · 讯飞星火 · MiniMax 海螺 · 阶跃跃问 · 零一万物
-英文圈: HuggingChat · Perplexity · DeepSeek · Grok · Mistral Le Chat · Microsoft Copilot · Pi
+中文圈: DeepSeek · 豆包 · 腾讯元宝(混元) · Kimi · 智谱清言 · 通义千问 · 文心一言 · 讯飞星火 · MiniMax 海螺 · 阶跃跃问 · 零一万物 · 百小应
+英文圈: HuggingChat · Perplexity · Grok · Mistral Le Chat · Microsoft Copilot · Pi
 
 如果你关注的站点在列表上,可以通过 popup 内的赞助链接让它优先上线。
 
@@ -278,7 +278,7 @@ user's own machine. All other categories: not collected.
 - [ ] Privacy policy live (GitHub Pages or repo README)
 - [ ] 5 screenshots (1280×800)
 - [ ] 128×128 high-res icon
-- [ ] Zip the extension (exclude `.git`, `STORE_LISTING.md`, `Chrome Extension MV3 技术报告.md`)
+- [ ] Zip the extension (exclude `.git`, `.github`, `store`, `STORE_LISTING.md`, `docs/`, `CLAUDE.md`, `CONTRIBUTING.md`, `SECURITY.md`)
 - [ ] Fill listing using copy above
 - [ ] Highlight the `optional_host_permissions: *://*/*` reasoning under "Single purpose" review — auditors usually ask about wildcard hosts; the answer is "for self-hosted OpenWebUI, user-granted at runtime only"
 - [ ] Submit for review (typically 1-3 business days)

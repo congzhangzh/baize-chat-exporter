@@ -12,6 +12,8 @@ Originally born as *Gemini Chat Exporter* (hence the repo name `sorry_gemini`). 
 
 ## Supported sites
 
+The six sites below are the **supported and tested scenarios** today. Everything else — including the Chinese AI services in *Coming soon* — is planned and **community-owned**: see [CONTRIBUTING.md](CONTRIBUTING.md) and the issue templates.
+
 | Site | URL | Mode | Notes |
 |------|-----|------|-------|
 | **Gemini** | `gemini.google.com` | turn-based | Original support, math + citations cleaned |
@@ -216,10 +218,10 @@ The extension icon appears in the toolbar; pin it for one-click access. Firefox 
 
 The framework already covers six sites. Additional adapters are intentionally added on demand — we'd rather ship two solid adapters than ten flaky ones. See [RELEASE_NOTES.md](RELEASE_NOTES.md) for the full per-site queue. Headline candidates:
 
-- 中文圈：豆包 · Kimi · 智谱清言 · 通义千问 · 文心一言 · 讯飞星火 · MiniMax 海螺 · 阶跃跃问 · 零一万物
-- 英文圈：HuggingChat · Perplexity · DeepSeek · Grok · Mistral Le Chat · Microsoft Copilot · Pi
+- 中文圈：DeepSeek · 豆包 · 腾讯元宝（混元）· Kimi · 智谱清言 · 通义千问 · 文心一言 · 讯飞星火 · MiniMax 海螺 · 阶跃跃问 · 零一万物 · 百小应
+- 英文圈：HuggingChat · Perplexity · Grok · Mistral Le Chat · Microsoft Copilot · Pi
 
-Want one of these prioritized? See [Sponsor a site](#sponsor-a-site) below.
+All of these are **community-wanted** — an adapter is ~100 lines and [CONTRIBUTING.md](CONTRIBUTING.md) walks you through it. Want one prioritized by the maintainer instead? See [Sponsor a site](#sponsor-a-site) below.
 
 ---
 

@@ -78,31 +78,35 @@ Philosophy: **token / attention is the bottleneck, not technical ability.** We d
 
 Selector hints below are starting guesses for whoever picks up each adapter. Open an issue with a DOM snippet if you can speed things up — and tag it `sponsored-adapter` if you're sponsoring.
 
+**Every row is open to community contribution** — see [CONTRIBUTING.md](CONTRIBUTING.md) and the [new-adapter issue template](.github/ISSUE_TEMPLATE/new-adapter.md). "community-wanted" means: the framework is ready, the adapter is ~100 lines, and a PR is welcome.
+
 **Chinese ecosystem** (largest user bases first):
 
-| Site | URL | Selector hint |
-|------|-----|---------------|
-| 豆包 Doubao | `doubao.com` | `[data-testid*="message"]`, `.receive-message` / `.send-message` |
-| Kimi | `kimi.com`, `kimi.moonshot.cn` | `.chat-content`, role-based message blocks |
-| 智谱清言 ChatGLM | `chatglm.cn` | `[data-message-id]`, `.user-msg` / `.bot-msg` |
-| 通义千问 Qwen | `tongyi.aliyun.com`, `chat.qwen.ai` | `.qa-pair`, `.question` / `.answer` |
-| 文心一言 Wenxin | `yiyan.baidu.com` | dialog-list custom elements |
-| 讯飞星火 Spark | `xinghuo.xfyun.cn` | role-prefixed message divs |
-| MiniMax 海螺 | `hailuoai.com` | message list with role distinction |
-| 阶跃跃问 StepFun | `yuewen.cn` | TBD |
-| 零一万物 01.AI | `wanzhi.lingyiwanwu.com` | TBD |
+| Site | URL | Selector hint | Status |
+|------|-----|---------------|--------|
+| DeepSeek | `chat.deepseek.com` | similar to ChatGPT layout | community-wanted |
+| 豆包 Doubao | `doubao.com` | `[data-testid*="message"]`, `.receive-message` / `.send-message` | community-wanted |
+| 腾讯元宝 Yuanbao (Hunyuan) | `yuanbao.tencent.com` | TBD | community-wanted |
+| Kimi | `kimi.com`, `kimi.moonshot.cn` | `.chat-content`, role-based message blocks | community-wanted |
+| 智谱清言 ChatGLM | `chatglm.cn` | `[data-message-id]`, `.user-msg` / `.bot-msg` | community-wanted |
+| 通义千问 Qwen | `tongyi.aliyun.com`, `chat.qwen.ai` | `.qa-pair`, `.question` / `.answer` | community-wanted |
+| 文心一言 Wenxin | `yiyan.baidu.com` | dialog-list custom elements | community-wanted |
+| 讯飞星火 Spark | `xinghuo.xfyun.cn` | role-prefixed message divs | community-wanted |
+| MiniMax 海螺 | `hailuoai.com` | message list with role distinction | community-wanted |
+| 阶跃跃问 StepFun | `yuewen.cn` | TBD | community-wanted |
+| 零一万物 01.AI | `wanzhi.lingyiwanwu.com` | TBD | community-wanted |
+| 百小应 Baichuan | `ying.baichuan-ai.com` (verify) | TBD | community-wanted |
 
 **English ecosystem**:
 
-| Site | URL | Selector hint |
-|------|-----|---------------|
-| HuggingChat | `huggingface.co/chat` | `[role="article"]`, prose markdown blocks |
-| Perplexity | `perplexity.ai` | `.prose`, source-cited answer cards |
-| DeepSeek | `chat.deepseek.com` | similar to ChatGPT layout |
-| Grok | `grok.com`, `x.com/i/grok` | TBD; X integration uses a different DOM tree |
-| Mistral Le Chat | `chat.mistral.ai` | TBD |
-| Microsoft Copilot | `copilot.microsoft.com` | shadow DOM challenges expected |
-| Pi (Inflection) | `pi.ai` | streaming message bubbles |
+| Site | URL | Selector hint | Status |
+|------|-----|---------------|--------|
+| HuggingChat | `huggingface.co/chat` | `[role="article"]`, prose markdown blocks | community-wanted |
+| Perplexity | `perplexity.ai` | `.prose`, source-cited answer cards | community-wanted |
+| Grok | `grok.com`, `x.com/i/grok` | TBD; X integration uses a different DOM tree | community-wanted |
+| Mistral Le Chat | `chat.mistral.ai` | TBD | community-wanted |
+| Microsoft Copilot | `copilot.microsoft.com` | shadow DOM challenges expected | community-wanted |
+| Pi (Inflection) | `pi.ai` | streaming message bubbles | community-wanted |
 
 Each adapter is ~100 lines of selector arrays plus optional cleanup hooks; the framework handles everything else (extraction pipeline, Turndown, image fetch, scroll-to-load).
 
