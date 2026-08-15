@@ -103,7 +103,7 @@ Selector hints below are starting guesses for whoever picks up each adapter. Ope
 |------|-----|---------------|--------|
 | HuggingChat | `huggingface.co/chat` | `[role="article"]`, prose markdown blocks | community-wanted |
 | Perplexity | `perplexity.ai` | `.prose`, source-cited answer cards | community-wanted |
-| Grok (SpaceXAI, ex-xAI) | `grok.com`, `x.com/i/grok` | TBD; X integration uses a different DOM tree. Scope is the chat UI — the enterprise "Grok Bot" agent product (2026-08) is out of scope | community-wanted |
+| Grok on X | `x.com/i/grok` | X integration uses a different DOM tree than grok.com (which is now SUPPORTED, 2026-08-15). The enterprise "Grok Bot" agent product is out of scope | community-wanted |
 | Character.AI | `character.ai` | persona chat platform, ~20M MAU; message-list DOM, TBD | community-wanted |
 | Mistral Le Chat | `chat.mistral.ai` | TBD | community-wanted |
 | Microsoft Copilot | `copilot.microsoft.com` | shadow DOM challenges expected | community-wanted |

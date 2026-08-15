@@ -1,6 +1,6 @@
 {
   "appName": { "message": "백택 BaiZe — AI 대화 내보내기" },
-  "appDesc": { "message": "Gemini, ChatGPT, Claude, Meta AI, WhatsApp Web, 자체 호스팅 OpenWebUI 대화를 클릭 한 번으로 Markdown으로 내보냅니다. 100% 로컬." },
+  "appDesc": { "message": "Gemini, ChatGPT, Claude, Grok, Meta AI, WhatsApp Web, OpenWebUI 대화를 클릭 한 번으로 Markdown으로 내보냅니다. 100% 로컬." },
   "slogan": { "message": "모든 AI에게서 배우고, 나만의 지혜를 키우세요" },
 
   "siteUnknown": { "message": "인식되지 않은 사이트" },

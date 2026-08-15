@@ -4,7 +4,7 @@
 
 **白泽 (BaiZe)** is the all-knowing beast of the *Shan Hai Jing* (Classic of Mountains and Seas) tradition: it dictated the knowledge of all 11,520 creatures of the world to the Yellow Emperor, who had it recorded as the *Bai Ze Tu* — history's first knowledge export. This extension does the same for your AI conversations.
 
-One-click export for conversations from **Gemini, ChatGPT, Claude, Meta AI, WhatsApp Web** (Meta AI or any contact), and **self-hosted OpenWebUI** — to clean, image-embedded Markdown. UI in English, 中文, 日本語 and 한국어.
+One-click export for conversations from **Gemini, ChatGPT, Claude, Grok, Meta AI, WhatsApp Web** (Meta AI or any contact), and **self-hosted OpenWebUI** — to clean, image-embedded Markdown. UI in English, 中文, 日本語 and 한국어.
 
 Originally born as *Gemini Chat Exporter* — the repo first lived at `sorry_gemini`, a cheeky nod to that origin, before becoming `baize-chat-exporter`. Now a generic per-site adapter framework: every site is a tiny adapter file. The next site you add is one `content/adapters/<name>.js` away.
 
@@ -12,13 +12,14 @@ Originally born as *Gemini Chat Exporter* — the repo first lived at `sorry_gem
 
 ## Supported sites
 
-The six sites below are the **supported and tested scenarios** today. Everything else — including the Chinese AI services in *Coming soon* — is planned and **community-owned**: see [CONTRIBUTING.md](CONTRIBUTING.md) and the issue templates.
+The seven sites below are the **supported and tested scenarios** today. Everything else — including the Chinese AI services in *Coming soon* — is planned and **community-owned**: see [CONTRIBUTING.md](CONTRIBUTING.md) and the issue templates.
 
 | Site | URL | Mode | Notes |
 |------|-----|------|-------|
 | **Gemini** | `gemini.google.com` | turn-based | Original support, math + citations cleaned |
 | **ChatGPT** | `chatgpt.com` / `chat.openai.com` | turn-based | KaTeX `$...$` / `$$...$$` reconstructed |
 | **Claude** | `claude.ai` | turn-based | Artifacts placeholder, Extended Thinking wrapped in `<details>` |
+| **Grok** | `grok.com` | turn-based | Selectors verified against the live DOM (2026-08); `x.com/i/grok` not covered |
 | **Meta AI** | `meta.ai` / `www.meta.ai` | turn-based | Best-guess selectors with multi-layer fallbacks |
 | **WhatsApp Web** | `web.whatsapp.com` | bubble-based | Works for any chat, including Meta AI contact. Timestamps preserved. |
 | **OpenWebUI** | *user-supplied* | turn-based | Add your self-hosted deployment in popup → runtime permission grant |
@@ -219,7 +220,7 @@ The extension icon appears in the toolbar; pin it for one-click access. Firefox 
 The framework already covers six sites. Additional adapters are intentionally added on demand — we'd rather ship two solid adapters than ten flaky ones. See [RELEASE_NOTES.md](RELEASE_NOTES.md) for the full per-site queue. Headline candidates:
 
 - 中文圈：DeepSeek · 豆包 · 腾讯元宝（混元）· Kimi · 智谱清言 · 通义千问 · 文心一言 · 讯飞星火 · MiniMax 海螺 · 阶跃跃问 · 零一万物 · 百小应
-- 英文圈：HuggingChat · Perplexity · Grok (SpaceXAI) · Mistral Le Chat · Microsoft Copilot · Pi · Character.AI
+- 英文圈：HuggingChat · Perplexity · Mistral Le Chat · Microsoft Copilot · Pi · Character.AI · Grok on X（`x.com/i/grok`，独立站 grok.com 已支持）
 
 All of these are **community-wanted** — an adapter is ~100 lines and [CONTRIBUTING.md](CONTRIBUTING.md) walks you through it. Want one prioritized by the maintainer instead? See [Sponsor a site](#sponsor-a-site) below.
 

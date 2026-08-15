@@ -16,6 +16,7 @@
     "https://chatgpt.com/*",
     "https://chat.openai.com/*",
     "https://claude.ai/*",
+    "https://grok.com/*",
     "https://meta.ai/*",
     "https://www.meta.ai/*",
     "https://web.whatsapp.com/*"
@@ -70,6 +71,17 @@
         "lib/turndown-plugin-gfm.min.js",
         "content/adapter-registry.js",
         "content/adapters/claude.js",
+        "content/content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://grok.com/*"],
+      "js": [
+        "lib/turndown.min.js",
+        "lib/turndown-plugin-gfm.min.js",
+        "content/adapter-registry.js",
+        "content/adapters/grok.js",
         "content/content.js"
       ],
       "run_at": "document_idle"

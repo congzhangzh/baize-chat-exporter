@@ -1,6 +1,6 @@
 {
   "appName": { "message": "BaiZe — AI Chat Exporter" },
-  "appDesc": { "message": "Export Gemini, ChatGPT, Claude, Meta AI, WhatsApp Web and self-hosted OpenWebUI chats to clean Markdown. One click, 100% local." },
+  "appDesc": { "message": "Export Gemini, ChatGPT, Claude, Grok, Meta AI, WhatsApp Web and OpenWebUI chats to clean Markdown. One click, 100% local." },
   "slogan": { "message": "Draw from every AI; grow your own intelligence." },
 
   "siteUnknown": { "message": "Site not recognized" },

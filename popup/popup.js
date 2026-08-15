@@ -31,6 +31,14 @@ const DEFAULT_SITE_BINDINGS = [
     dynamic: false
   },
   {
+    adapter: 'grok',
+    displayName: 'Grok',
+    enabled: true,
+    defaults: ['https://grok.com/*'],
+    extra: [],
+    dynamic: false
+  },
+  {
     adapter: 'meta',
     displayName: 'Meta AI',
     enabled: true,
@@ -60,6 +68,7 @@ const ADAPTER_FILE = {
   gemini: 'content/adapters/gemini.js',
   chatgpt: 'content/adapters/chatgpt.js',
   claude: 'content/adapters/claude.js',
+  grok: 'content/adapters/grok.js',
   meta: 'content/adapters/meta.js',
   whatsapp: 'content/adapters/whatsapp.js',
   openwebui: 'content/adapters/openwebui.js'

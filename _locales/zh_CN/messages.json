@@ -1,6 +1,6 @@
 {
   "appName": { "message": "白泽 — AI 对话导出" },
-  "appDesc": { "message": "把 Gemini、ChatGPT、Claude、Meta AI、WhatsApp Web 与自部署 OpenWebUI 的对话一键导出为 Markdown。完全本地运行。" },
+  "appDesc": { "message": "把 Gemini、ChatGPT、Claude、Grok、Meta AI、WhatsApp Web 与 OpenWebUI 的对话一键导出为 Markdown。完全本地运行。" },
   "slogan": { "message": "汲百家所长，长出你自己的智慧" },
 
   "siteUnknown": { "message": "未识别站点" },
