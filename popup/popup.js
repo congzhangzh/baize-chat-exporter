@@ -65,6 +65,9 @@ const ADAPTER_FILE = {
   openwebui: 'content/adapters/openwebui.js'
 };
 
+// Shorthand for chrome.i18n.getMessage; substitutions must be strings.
+const t = (key, subs) => chrome.i18n.getMessage(key, subs);
+
 // ----------------------------------------------------------
 // Storage helpers
 // ----------------------------------------------------------
@@ -168,6 +171,16 @@ function resolveSite(url, bindings) {
 // DOM
 // ----------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
+  // Static labels come from _locales; the English text in popup.html is only
+  // a fallback for direct file preview.
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const msg = t(el.dataset.i18n);
+    if (msg) el.textContent = msg;
+  });
+  document.title = t('appName') || document.title;
+  document.documentElement.lang = chrome.i18n.getUILanguage();
+  document.getElementById('ext-version').textContent = chrome.runtime.getManifest().version;
+
   const btnDownload    = document.getElementById('btn-download');
   const btnDownloadTxt = document.getElementById('btn-download-text');
   const btnClipboard   = document.getElementById('btn-clipboard');
@@ -212,11 +225,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateExportUI() {
     imageSubOpts.classList.toggle('hidden', !optImages.checked);
-    if (optImages.checked && optZip.checked) {
-      btnDownloadTxt.textContent = '下载 .zip 文件';
-    } else {
-      btnDownloadTxt.textContent = '下载 .md 文件';
-    }
+    btnDownloadTxt.textContent =
+      optImages.checked && optZip.checked ? t('btnDownloadZip') : t('btnDownloadMd');
   }
 
   optImages.addEventListener('change', () => { savePrefs(); updateExportUI(); });
@@ -260,12 +270,12 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     } catch (_) {
-      activeSitePill.textContent = '未识别站点';
+      activeSitePill.textContent = t('siteUnknown');
       activeSitePill.classList.add('inactive');
       return null;
     }
     if (!tab || !tab.url) {
-      activeSitePill.textContent = '未识别站点';
+      activeSitePill.textContent = t('siteUnknown');
       activeSitePill.classList.add('inactive');
       return null;
     }
@@ -275,7 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
       activeSitePill.classList.remove('inactive');
       return { tab, hit };
     }
-    activeSitePill.textContent = '未识别站点';
+    activeSitePill.textContent = t('siteUnknown');
     activeSitePill.classList.add('inactive');
     return { tab, hit: null };
   }
@@ -294,7 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
       sitesList.appendChild(renderSiteCard(b));
     }
 
-    sitesSummary.textContent = `(${enabledCount} 启用 · ${customCount} 自定义域)`;
+    sitesSummary.textContent = t('sitesSummary', [String(enabledCount), String(customCount)]);
   }
 
   function renderSiteCard(binding) {
@@ -329,13 +339,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (binding.defaults.length === 0 && binding.dynamic) {
       const empty = document.createElement('div');
       empty.className = 'default';
-      empty.textContent = '默认: (无,请添加你的部署地址)';
+      empty.textContent = t('patternDefaultEmpty');
       list.appendChild(empty);
     } else {
       binding.defaults.forEach(p => {
         const row = document.createElement('div');
         row.className = 'default';
-        row.textContent = `默认: ${p}`;
+        row.textContent = t('patternDefault', [p]);
         list.appendChild(row);
       });
     }
@@ -347,7 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
       span.textContent = `· ${p}`;
       const remove = document.createElement('button');
       remove.className = 'remove-btn';
-      remove.title = '删除';
+      remove.title = t('removeTitle');
       remove.textContent = '×';
       remove.addEventListener('click', async () => {
         const idx = binding.extra.indexOf(p);
@@ -380,32 +390,32 @@ document.addEventListener('DOMContentLoaded', () => {
       ? 'https://chat.mycompany.com/'
       : 'https://mirror.example.com/';
     const addBtn = document.createElement('button');
-    addBtn.textContent = '添加';
+    addBtn.textContent = t('btnAdd');
     // chrome.permissions.request must be called synchronously in the user
     // gesture handler, so we do all preflight work without awaiting first.
     addBtn.addEventListener('click', () => {
       const pattern = normalizeOriginPattern(input.value);
       if (!pattern) {
-        setError('请输入合法的 URL，例如 https://chat.example.com/');
+        setError(t('errInvalidUrl'));
         return;
       }
       if ([...binding.defaults, ...binding.extra].includes(pattern)) {
-        setError('该地址已存在。');
+        setError(t('errDuplicate'));
         return;
       }
       chrome.permissions.request({ origins: [pattern] }, async granted => {
         if (chrome.runtime.lastError) {
-          setError('权限申请失败：' + chrome.runtime.lastError.message);
+          setError(t('errPermissionRequest', [chrome.runtime.lastError.message]));
           return;
         }
         if (!granted) {
-          setError('未授权该域名，扩展无法在此运行。');
+          setError(t('errPermissionDenied'));
           return;
         }
         binding.extra.push(pattern);
         await saveSiteBindings(bindings);
         input.value = '';
-        setStatus(`已为 ${binding.displayName} 添加 ${pattern}`);
+        setStatus(t('statusSiteAdded', [binding.displayName, pattern]));
         renderSitesPanel();
         refreshActivePill();
       });
@@ -417,7 +427,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (binding.dynamic && binding.defaults.length === 0) {
       const help = document.createElement('div');
       help.className = 'help-line';
-      help.textContent = 'OpenWebUI 是自部署的，需先把你的实例地址加进来并授权。';
+      help.textContent = t('openwebuiHelp');
       card.appendChild(help);
     }
 
@@ -449,7 +459,7 @@ document.addEventListener('DOMContentLoaded', () => {
       await new Promise(r => setTimeout(r, 200));
       return true;
     } catch (err) {
-      throw new Error('无法注入脚本：' + err.message);
+      throw new Error(t('errInject', [err.message]));
     }
   }
 
@@ -528,30 +538,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const useZip            = optZip.checked && includeImages && mode === 'download';
     const imageMode         = useZip ? 'extract' : 'inline';
 
-    setStatus(scrollFirst ? '正在滚动加载历史消息…' : '正在提取对话内容…', true);
+    setStatus(scrollFirst ? t('statusScrolling') : t('statusExtracting'), true);
 
     let tab;
     try {
       [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     } catch (err) {
-      setError('无法获取当前标签页：' + err.message);
+      setError(t('errTabQuery', [err.message]));
       setButtons(false);
       return;
     }
     if (!tab || !tab.url) {
-      setError('无法读取当前页面 URL。');
+      setError(t('errNoUrl'));
       setButtons(false);
       return;
     }
 
     const hit = resolveSite(tab.url, bindings);
     if (!hit) {
-      setError('当前页面未命中任何启用的站点。请打开支持的 AI 对话页面，或在下方"站点配置"添加/启用站点。');
+      setError(t('errNoSiteMatch'));
       setButtons(false);
       return;
     }
     if (!hit.adapterFile) {
-      setError(`未找到 ${hit.binding.adapter} 的适配器脚本。`);
+      setError(t('errNoAdapterFile', [hit.binding.adapter]));
       setButtons(false);
       return;
     }
@@ -564,7 +574,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    if (includeImages) setStatus('正在提取对话与图片…', true);
+    if (includeImages) setStatus(t('statusExtractingImages'), true);
 
     let response;
     try {
@@ -573,13 +583,13 @@ document.addEventListener('DOMContentLoaded', () => {
         options: { mode, includeImages, scrollFirst, imageMode, includeRemoteImages }
       });
     } catch (err) {
-      setError('发送消息失败：' + err.message);
+      setError(t('errSendMessage', [err.message]));
       setButtons(false);
       return;
     }
 
     if (!response) {
-      setError('内容脚本无响应，请刷新页面后重试。');
+      setError(t('errNoResponse'));
       setButtons(false);
       return;
     }
@@ -589,27 +599,38 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const count = response.turnCount
-      ? `（${response.adapterName || ''} · 共 ${response.turnCount} ${response.extractMode === 'bubble-based' ? '条消息' : '轮对话'}）`
-      : '';
-    const imgCount = response.extractedImages && response.extractedImages.length > 0
-      ? `，${response.extractedImages.length} 张图片`
-      : '';
-
     const spoolEnabled = optSpool.checked;
+
+    // Whole sentences come from the message catalog; only the parenthetical
+    // detail list is assembled here, so word order survives every locale.
+    function exportSummary(withImages) {
+      const parts = [];
+      if (response.turnCount) {
+        if (response.adapterName) parts.push(response.adapterName);
+        parts.push(t(
+          response.extractMode === 'bubble-based' ? 'fragMessages' : 'fragTurns',
+          [String(response.turnCount)]
+        ));
+      }
+      if (withImages && response.extractedImages && response.extractedImages.length > 0) {
+        parts.push(t('fragImages', [String(response.extractedImages.length)]));
+      }
+      if (spoolEnabled) parts.push(t('fragSpool'));
+      return parts.length ? `(${parts.join(' · ')})` : '';
+    }
 
     if (mode === 'clipboard') {
       try {
         await navigator.clipboard.writeText(response.markdown);
         if (spoolEnabled) spoolMarkdown(response);
-        setStatus(`已复制到剪贴板 ${count}${spoolEnabled ? '，并写入 spool 桶' : ''}`);
+        setStatus(t('statusCopied', [exportSummary(false)]));
       } catch (err) {
-        setError('复制失败：' + err.message);
+        setError(t('errCopyFail', [err.message]));
       }
     } else {
       try {
         if (useZip && response.extractedImages && response.extractedImages.length > 0) {
-          setStatus('正在打包 ZIP…', true);
+          setStatus(t('statusZipping'), true);
           const zipDataUrl = await buildZip(
             response.filenameBase,
             response.markdown,
@@ -617,15 +638,15 @@ document.addEventListener('DOMContentLoaded', () => {
           );
           downloadFile(zipDataUrl, response.filenameBase + '.zip');
           if (spoolEnabled) spoolMarkdown(response);
-          setStatus(`下载已开始 ${count}${imgCount}${spoolEnabled ? '，并写入 spool 桶' : ''}`);
+          setStatus(t('statusDownloadStarted', [exportSummary(true)]));
         } else {
           const dataUrl = textToDataUrl(response.markdown);
           downloadFile(dataUrl, response.filenameBase + '.md');
           if (spoolEnabled) spoolMarkdown(response);
-          setStatus(`下载已开始 ${count}${spoolEnabled ? '，并写入 spool 桶' : ''}`);
+          setStatus(t('statusDownloadStarted', [exportSummary(false)]));
         }
       } catch (err) {
-        setError('下载失败：' + err.message);
+        setError(t('errDownloadFail', [err.message]));
       }
     }
 

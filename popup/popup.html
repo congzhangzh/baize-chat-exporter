@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>AI Chat Exporter</title>
+  <title>BaiZe — AI Chat Exporter</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -309,45 +309,45 @@
       <line x1="16" y1="17" x2="8" y2="17" stroke="#89b4fa" stroke-width="2" stroke-linecap="round"/>
       <polyline points="10 9 9 9 8 9" stroke="#89b4fa" stroke-width="2" stroke-linecap="round"/>
     </svg>
-    <h1>AI Chat Exporter</h1>
-    <span class="site-pill inactive" id="active-site">未识别站点</span>
+    <h1 data-i18n="appName">BaiZe — AI Chat Exporter</h1>
+    <span class="site-pill inactive" id="active-site" data-i18n="siteUnknown">Site not recognized</span>
   </div>
 
-  <div class="slogan">汲百家所长，长出你自己的智慧 · Draw from every AI; grow your own intelligence</div>
+  <div class="slogan" data-i18n="slogan">Draw from every AI; grow your own intelligence.</div>
 
   <div class="options">
     <div class="option-row">
       <input type="checkbox" id="opt-scroll" checked>
       <div>
-        <label for="opt-scroll">自动滚动加载全部消息</label>
-        <div class="hint">取消则只导出当前可见内容</div>
+        <label for="opt-scroll" data-i18n="optScrollLabel">Auto-scroll to load all messages</label>
+        <div class="hint" data-i18n="optScrollHint">Uncheck to export only the visible content</div>
       </div>
     </div>
     <div class="option-row">
       <input type="checkbox" id="opt-images" checked>
-      <label for="opt-images">包含图片</label>
+      <label for="opt-images" data-i18n="optImagesLabel">Include images</label>
     </div>
     <div class="sub-options" id="image-sub-options">
       <div class="option-row">
         <input type="checkbox" id="opt-remote-images">
         <div>
-          <label for="opt-remote-images">下载远程图片</label>
-          <div class="hint">默认仅保存本地上传图片</div>
+          <label for="opt-remote-images" data-i18n="optRemoteLabel">Download remote images</label>
+          <div class="hint" data-i18n="optRemoteHint">Default: local uploads only</div>
         </div>
       </div>
       <div class="option-row">
         <input type="checkbox" id="opt-zip">
         <div>
-          <label for="opt-zip">打包为 ZIP</label>
-          <div class="hint">否则图片内联到 Markdown</div>
+          <label for="opt-zip" data-i18n="optZipLabel">Package as ZIP</label>
+          <div class="hint" data-i18n="optZipHint">Otherwise images are inlined into the Markdown</div>
         </div>
       </div>
     </div>
     <div class="option-row">
       <input type="checkbox" id="opt-spool">
       <div>
-        <label for="opt-spool">同步写入 spool 桶</label>
-        <div class="hint">额外存一份 .md 到 Downloads/ai-chat-spool/，供 MCP 读取</div>
+        <label for="opt-spool" data-i18n="optSpoolLabel">Also write to spool bucket</label>
+        <div class="hint" data-i18n="optSpoolHint">Saves an extra plaintext .md copy to Downloads/ai-chat-spool/ for MCP tools. Unencrypted, never auto-deleted.</div>
       </div>
     </div>
   </div>
@@ -358,7 +358,7 @@
       <polyline points="7 10 12 15 17 10"/>
       <line x1="12" y1="15" x2="12" y2="3"/>
     </svg>
-    <span id="btn-download-text">下载 .md 文件</span>
+    <span id="btn-download-text" data-i18n="btnDownloadMd">Download .md file</span>
   </button>
 
   <button class="btn" id="btn-clipboard">
@@ -366,7 +366,7 @@
       <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
     </svg>
-    复制到剪贴板
+    <span data-i18n="btnClipboard">Copy to clipboard</span>
   </button>
 
   <div class="status-area">
@@ -376,20 +376,20 @@
 
   <details class="sites-section" id="sites-section">
     <summary>
-      站点配置
+      <span data-i18n="sitesConfigTitle">Site configuration</span>
       <span id="sites-summary"></span>
     </summary>
     <div id="sites-list"></div>
   </details>
 
   <div class="sponsor-row">
-    支持作者：
+    <span data-i18n="sponsorLabel">Support the author:</span>
     <a href="https://github.com/sponsors/congzhangzh" data-sponsor target="_blank" rel="noopener">GitHub Sponsors</a>
     ·
     <a href="https://ko-fi.com/congzhangzh" data-sponsor target="_blank" rel="noopener">☕ Ko-fi</a>
     ·
     <a href="https://github.com/congzhangzh/sorry_gemini" data-sponsor target="_blank" rel="noopener">GitHub</a>
-    · v2.0.0
+    · v<span id="ext-version"></span>
   </div>
 
   <script src="../lib/jszip.min.js"></script>

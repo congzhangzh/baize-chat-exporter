@@ -530,7 +530,7 @@
         try {
           const enabled = await isAdapterEnabled();
           if (!enabled) {
-            sendResponse({ error: `已在设置里禁用 ${adapter.displayName} 适配器，请在弹窗内重新启用。` });
+            sendResponse({ error: chrome.i18n.getMessage('errAdapterDisabled', [adapter.displayName]) });
             return;
           }
 
@@ -547,7 +547,7 @@
             const bubbles = extractBubbleConversation(includeImages);
             if (bubbles.length === 0) {
               sendResponse({
-                error: `未找到对话内容。请确认 ${adapter.displayName} 页面已加载完成。`
+                error: chrome.i18n.getMessage('errNoConversation', [adapter.displayName])
               });
               return;
             }
@@ -564,7 +564,7 @@
             const turns = extractTurnConversation(includeImages);
             if (turns.length === 0) {
               sendResponse({
-                error: `未找到对话内容。请确认 ${adapter.displayName} 页面已加载完成。`
+                error: chrome.i18n.getMessage('errNoConversation', [adapter.displayName])
               });
               return;
             }

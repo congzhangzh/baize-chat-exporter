@@ -1,0 +1,61 @@
+{
+  "appName": { "message": "BaiZe — AI Chat Exporter" },
+  "appDesc": { "message": "Export Gemini, ChatGPT, Claude, Meta AI, WhatsApp Web and self-hosted OpenWebUI chats to clean Markdown. One click, 100% local." },
+  "slogan": { "message": "Draw from every AI; grow your own intelligence." },
+
+  "siteUnknown": { "message": "Site not recognized" },
+
+  "optScrollLabel": { "message": "Auto-scroll to load all messages" },
+  "optScrollHint": { "message": "Uncheck to export only the visible content" },
+  "optImagesLabel": { "message": "Include images" },
+  "optRemoteLabel": { "message": "Download remote images" },
+  "optRemoteHint": { "message": "Default: local uploads only" },
+  "optZipLabel": { "message": "Package as ZIP" },
+  "optZipHint": { "message": "Otherwise images are inlined into the Markdown" },
+  "optSpoolLabel": { "message": "Also write to spool bucket" },
+  "optSpoolHint": { "message": "Saves an extra plaintext .md copy to Downloads/ai-chat-spool/ for MCP tools. Unencrypted, never auto-deleted." },
+
+  "btnDownloadMd": { "message": "Download .md file" },
+  "btnDownloadZip": { "message": "Download .zip file" },
+  "btnClipboard": { "message": "Copy to clipboard" },
+
+  "sitesConfigTitle": { "message": "Site configuration" },
+  "sitesSummary": { "message": "($1 enabled · $2 custom)" },
+  "patternDefault": { "message": "Default: $1" },
+  "patternDefaultEmpty": { "message": "Default: none — add your deployment URL" },
+  "removeTitle": { "message": "Remove" },
+  "btnAdd": { "message": "Add" },
+  "openwebuiHelp": { "message": "OpenWebUI is self-hosted: add your instance URL and grant access first." },
+  "statusSiteAdded": { "message": "Added $2 for $1" },
+
+  "sponsorLabel": { "message": "Support the author:" },
+
+  "statusScrolling": { "message": "Loading full history…" },
+  "statusExtracting": { "message": "Extracting conversation…" },
+  "statusExtractingImages": { "message": "Extracting conversation and images…" },
+  "statusZipping": { "message": "Packaging ZIP…" },
+
+  "statusCopied": { "message": "Copied to clipboard $1" },
+  "statusDownloadStarted": { "message": "Download started $1" },
+  "fragTurns": { "message": "$1 turns" },
+  "fragMessages": { "message": "$1 messages" },
+  "fragImages": { "message": "$1 images" },
+  "fragSpool": { "message": "spool copy written" },
+
+  "errInvalidUrl": { "message": "Enter a valid URL, e.g. https://chat.example.com/" },
+  "errDuplicate": { "message": "That address is already listed." },
+  "errPermissionRequest": { "message": "Permission request failed: $1" },
+  "errPermissionDenied": { "message": "Permission was not granted; the extension cannot run there." },
+  "errInject": { "message": "Could not inject the content script: $1" },
+  "errTabQuery": { "message": "Could not access the current tab: $1" },
+  "errNoUrl": { "message": "Could not read the current page URL." },
+  "errNoSiteMatch": { "message": "This page doesn't match any enabled site. Open a supported AI chat page, or add/enable it under Site configuration below." },
+  "errNoAdapterFile": { "message": "No adapter script found for $1." },
+  "errSendMessage": { "message": "Failed to message the page: $1" },
+  "errNoResponse": { "message": "No response from the content script. Refresh the page and try again." },
+  "errCopyFail": { "message": "Copy failed: $1" },
+  "errDownloadFail": { "message": "Download failed: $1" },
+
+  "errAdapterDisabled": { "message": "$1 is disabled in Site configuration. Re-enable it in the popup." },
+  "errNoConversation": { "message": "No conversation found. Make sure the $1 page has finished loading." }
+}

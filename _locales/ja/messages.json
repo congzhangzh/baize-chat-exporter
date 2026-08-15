@@ -1,0 +1,61 @@
+{
+  "appName": { "message": "白沢 BaiZe — AI チャットエクスポート" },
+  "appDesc": { "message": "Gemini、ChatGPT、Claude、Meta AI、WhatsApp Web、セルフホストの OpenWebUI の会話をワンクリックで Markdown にエクスポート。完全ローカル動作。" },
+  "slogan": { "message": "あらゆるAIから学び、自分の知恵を育てる" },
+
+  "siteUnknown": { "message": "未対応のサイト" },
+
+  "optScrollLabel": { "message": "自動スクロールで全メッセージを読み込む" },
+  "optScrollHint": { "message": "オフにすると表示中の内容のみエクスポートします" },
+  "optImagesLabel": { "message": "画像を含める" },
+  "optRemoteLabel": { "message": "リモート画像をダウンロード" },
+  "optRemoteHint": { "message": "デフォルトではアップロードした画像のみ保存します" },
+  "optZipLabel": { "message": "ZIP にまとめる" },
+  "optZipHint": { "message": "オフの場合、画像は Markdown にインライン埋め込みされます" },
+  "optSpoolLabel": { "message": "spool バケットにも書き込む" },
+  "optSpoolHint": { "message": "MCP ツール用に平文の .md を Downloads/ai-chat-spool/ にも保存します。暗号化されず、自動削除もされません。" },
+
+  "btnDownloadMd": { "message": ".md ファイルをダウンロード" },
+  "btnDownloadZip": { "message": ".zip ファイルをダウンロード" },
+  "btnClipboard": { "message": "クリップボードにコピー" },
+
+  "sitesConfigTitle": { "message": "サイト設定" },
+  "sitesSummary": { "message": "($1 有効 · $2 カスタム)" },
+  "patternDefault": { "message": "デフォルト: $1" },
+  "patternDefaultEmpty": { "message": "デフォルト: なし — デプロイ先の URL を追加してください" },
+  "removeTitle": { "message": "削除" },
+  "btnAdd": { "message": "追加" },
+  "openwebuiHelp": { "message": "OpenWebUI はセルフホスト型です。先にインスタンスの URL を追加してアクセスを許可してください。" },
+  "statusSiteAdded": { "message": "$1 に $2 を追加しました" },
+
+  "sponsorLabel": { "message": "作者を応援:" },
+
+  "statusScrolling": { "message": "履歴を読み込んでいます…" },
+  "statusExtracting": { "message": "会話を抽出しています…" },
+  "statusExtractingImages": { "message": "会話と画像を抽出しています…" },
+  "statusZipping": { "message": "ZIP を作成しています…" },
+
+  "statusCopied": { "message": "クリップボードにコピーしました $1" },
+  "statusDownloadStarted": { "message": "ダウンロードを開始しました $1" },
+  "fragTurns": { "message": "$1 ターン" },
+  "fragMessages": { "message": "$1 件のメッセージ" },
+  "fragImages": { "message": "画像 $1 枚" },
+  "fragSpool": { "message": "spool にも保存済み" },
+
+  "errInvalidUrl": { "message": "有効な URL を入力してください（例: https://chat.example.com/）" },
+  "errDuplicate": { "message": "そのアドレスは既に登録されています。" },
+  "errPermissionRequest": { "message": "権限のリクエストに失敗しました: $1" },
+  "errPermissionDenied": { "message": "権限が付与されなかったため、このサイトでは動作できません。" },
+  "errInject": { "message": "コンテンツスクリプトを挿入できませんでした: $1" },
+  "errTabQuery": { "message": "現在のタブを取得できませんでした: $1" },
+  "errNoUrl": { "message": "現在のページの URL を読み取れませんでした。" },
+  "errNoSiteMatch": { "message": "このページは有効なサイトに一致しません。対応する AI チャットページを開くか、下の「サイト設定」で追加・有効化してください。" },
+  "errNoAdapterFile": { "message": "$1 のアダプタースクリプトが見つかりません。" },
+  "errSendMessage": { "message": "ページへのメッセージ送信に失敗しました: $1" },
+  "errNoResponse": { "message": "コンテンツスクリプトが応答しません。ページを再読み込みして再試行してください。" },
+  "errCopyFail": { "message": "コピーに失敗しました: $1" },
+  "errDownloadFail": { "message": "ダウンロードに失敗しました: $1" },
+
+  "errAdapterDisabled": { "message": "$1 はサイト設定で無効になっています。ポップアップで再度有効にしてください。" },
+  "errNoConversation": { "message": "会話が見つかりません。$1 のページが読み込み済みか確認してください。" }
+}

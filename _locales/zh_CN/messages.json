@@ -1,0 +1,61 @@
+{
+  "appName": { "message": "白泽 — AI 对话导出" },
+  "appDesc": { "message": "把 Gemini、ChatGPT、Claude、Meta AI、WhatsApp Web 与自部署 OpenWebUI 的对话一键导出为 Markdown。完全本地运行。" },
+  "slogan": { "message": "汲百家所长，长出你自己的智慧" },
+
+  "siteUnknown": { "message": "未识别站点" },
+
+  "optScrollLabel": { "message": "自动滚动加载全部消息" },
+  "optScrollHint": { "message": "取消则只导出当前可见内容" },
+  "optImagesLabel": { "message": "包含图片" },
+  "optRemoteLabel": { "message": "下载远程图片" },
+  "optRemoteHint": { "message": "默认仅保存本地上传图片" },
+  "optZipLabel": { "message": "打包为 ZIP" },
+  "optZipHint": { "message": "否则图片内联到 Markdown" },
+  "optSpoolLabel": { "message": "同步写入 spool 桶" },
+  "optSpoolHint": { "message": "额外存一份明文 .md 到 Downloads/ai-chat-spool/ 供 MCP 读取。不加密，也不会自动删除。" },
+
+  "btnDownloadMd": { "message": "下载 .md 文件" },
+  "btnDownloadZip": { "message": "下载 .zip 文件" },
+  "btnClipboard": { "message": "复制到剪贴板" },
+
+  "sitesConfigTitle": { "message": "站点配置" },
+  "sitesSummary": { "message": "($1 启用 · $2 自定义域)" },
+  "patternDefault": { "message": "默认: $1" },
+  "patternDefaultEmpty": { "message": "默认: 无，请添加你的部署地址" },
+  "removeTitle": { "message": "删除" },
+  "btnAdd": { "message": "添加" },
+  "openwebuiHelp": { "message": "OpenWebUI 是自部署的，需先把你的实例地址加进来并授权。" },
+  "statusSiteAdded": { "message": "已为 $1 添加 $2" },
+
+  "sponsorLabel": { "message": "支持作者：" },
+
+  "statusScrolling": { "message": "正在滚动加载历史消息…" },
+  "statusExtracting": { "message": "正在提取对话内容…" },
+  "statusExtractingImages": { "message": "正在提取对话与图片…" },
+  "statusZipping": { "message": "正在打包 ZIP…" },
+
+  "statusCopied": { "message": "已复制到剪贴板 $1" },
+  "statusDownloadStarted": { "message": "下载已开始 $1" },
+  "fragTurns": { "message": "共 $1 轮对话" },
+  "fragMessages": { "message": "共 $1 条消息" },
+  "fragImages": { "message": "$1 张图片" },
+  "fragSpool": { "message": "已写入 spool 桶" },
+
+  "errInvalidUrl": { "message": "请输入合法的 URL，例如 https://chat.example.com/" },
+  "errDuplicate": { "message": "该地址已存在。" },
+  "errPermissionRequest": { "message": "权限申请失败：$1" },
+  "errPermissionDenied": { "message": "未授权该域名，扩展无法在此运行。" },
+  "errInject": { "message": "无法注入脚本：$1" },
+  "errTabQuery": { "message": "无法获取当前标签页：$1" },
+  "errNoUrl": { "message": "无法读取当前页面 URL。" },
+  "errNoSiteMatch": { "message": "当前页面未命中任何启用的站点。请打开支持的 AI 对话页面，或在下方「站点配置」添加/启用站点。" },
+  "errNoAdapterFile": { "message": "未找到 $1 的适配器脚本。" },
+  "errSendMessage": { "message": "发送消息失败：$1" },
+  "errNoResponse": { "message": "内容脚本无响应，请刷新页面后重试。" },
+  "errCopyFail": { "message": "复制失败：$1" },
+  "errDownloadFail": { "message": "下载失败：$1" },
+
+  "errAdapterDisabled": { "message": "已在设置里禁用 $1 适配器，请在弹窗内重新启用。" },
+  "errNoConversation": { "message": "未找到对话内容。请确认 $1 页面已加载完成。" }
+}
