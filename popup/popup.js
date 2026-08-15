@@ -116,10 +116,16 @@ function cloneBinding(b) {
 function patternToRegex(pattern) {
   const escape = s => s.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
   let body = pattern;
-  body = body.replace(/^\*:\/\//, 'https?://');
+  // Placeholders survive escape(); substituting 'https?://' before escaping
+  // would turn its '?' into a literal and the pattern would never match.
+  body = body.replace(/^\*:\/\//, '\u0001');
   body = body.replace(/\*/g, '\u0000');
   body = escape(body);
+  body = body.replace(/\u0001/, 'https?://');
   body = body.replace(/\u0000/g, '.*');
+  // Chrome match patterns cannot carry ports and match URLs on any port;
+  // mirror that so portless patterns still hit ported deployments.
+  body = body.replace(/^([^\/]+:\/\/[^\/]+)/, '$1(:\\d+)?');
   return new RegExp('^' + body + '$');
 }
 
@@ -142,7 +148,9 @@ function normalizeOriginPattern(input) {
     return null;
   }
   if (!url.origin || url.origin === 'null') return null;
-  return url.origin + '/*';
+  // permissions.request rejects ported origins (match patterns cannot carry
+  // ports and already cover every port) - store the hostname only.
+  return `${url.protocol}//${url.hostname}/*`;
 }
 
 function resolveSite(url, bindings) {
@@ -229,10 +237,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // --------------------------------------------------------
   // Status helpers
   // --------------------------------------------------------
-  function setStatus(msg) { statusEl.innerHTML = msg; errorEl.textContent = ''; }
+  // Status messages stay plain text; the spinner is a separate element so
+  // no message string ever reaches innerHTML in this privileged page.
+  function setStatus(msg, busy = false) {
+    statusEl.textContent = '';
+    if (busy) {
+      const spin = document.createElement('span');
+      spin.className = 'spinner';
+      statusEl.appendChild(spin);
+    }
+    statusEl.appendChild(document.createTextNode(msg));
+    errorEl.textContent = '';
+  }
   function setError(msg) { errorEl.textContent = msg; statusEl.textContent = ''; }
   function setButtons(disabled) { btnDownload.disabled = disabled; btnClipboard.disabled = disabled; }
-  function spinner(label) { return `<span class="spinner"></span>${label}`; }
 
   // --------------------------------------------------------
   // Active site pill
@@ -334,7 +352,14 @@ document.addEventListener('DOMContentLoaded', () => {
       remove.addEventListener('click', async () => {
         const idx = binding.extra.indexOf(p);
         if (idx >= 0) binding.extra.splice(idx, 1);
-        try { await chrome.permissions.remove({ origins: [p] }); } catch (_) {}
+        // The same origin may be bound to another adapter; revoking it here
+        // would silently break that binding too.
+        const stillUsed = bindings.some(b =>
+          b !== binding && [...b.defaults, ...b.extra].includes(p)
+        );
+        if (!stillUsed) {
+          try { await chrome.permissions.remove({ origins: [p] }); } catch (_) {}
+        }
         await saveSiteBindings(bindings);
         renderSitesPanel();
         refreshActivePill();
@@ -503,7 +528,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const useZip            = optZip.checked && includeImages && mode === 'download';
     const imageMode         = useZip ? 'extract' : 'inline';
 
-    setStatus(spinner(scrollFirst ? '正在滚动加载历史消息…' : '正在提取对话内容…'));
+    setStatus(scrollFirst ? '正在滚动加载历史消息…' : '正在提取对话内容…', true);
 
     let tab;
     try {
@@ -539,7 +564,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    if (includeImages) setStatus(spinner('正在提取对话与图片…'));
+    if (includeImages) setStatus('正在提取对话与图片…', true);
 
     let response;
     try {
@@ -584,7 +609,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       try {
         if (useZip && response.extractedImages && response.extractedImages.length > 0) {
-          setStatus(spinner('正在打包 ZIP…'));
+          setStatus('正在打包 ZIP…', true);
           const zipDataUrl = await buildZip(
             response.filenameBase,
             response.markdown,

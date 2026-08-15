@@ -20,7 +20,8 @@
     "https://web.whatsapp.com/*"
   ],
   "optional_host_permissions": [
-    "*://*/*"
+    "https://*/*",
+    "http://localhost/*"
   ],
   "action": {
     "default_popup": "popup/popup.html",
