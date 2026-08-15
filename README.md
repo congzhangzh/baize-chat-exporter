@@ -6,7 +6,7 @@
 
 One-click export for conversations from **Gemini, ChatGPT, Claude, Meta AI, WhatsApp Web** (Meta AI or any contact), and **self-hosted OpenWebUI** — to clean, image-embedded Markdown. UI in English, 中文, 日本語 and 한국어.
 
-Originally born as *Gemini Chat Exporter* (hence the repo name `sorry_gemini`). Now a generic per-site adapter framework: every site is a tiny adapter file. The next site you add is one `content/adapters/<name>.js` away.
+Originally born as *Gemini Chat Exporter* — the repo first lived at `sorry_gemini`, a cheeky nod to that origin, before becoming `baize-chat-exporter`. Now a generic per-site adapter framework: every site is a tiny adapter file. The next site you add is one `content/adapters/<name>.js` away.
 
 ---
 
@@ -194,7 +194,7 @@ The store listing is being prepared. Once it is live:
 
 ### Manual install (available now)
 
-1. Download the latest release ZIP from [Releases](https://github.com/congzhangzh/sorry_gemini/releases) and extract it — or `git clone` this repo.
+1. Download the latest release ZIP from [Releases](https://github.com/congzhangzh/baize-chat-exporter/releases) and extract it — or `git clone` this repo.
 2. Open `chrome://extensions` (`edge://extensions` on Edge; the equivalent page on other Chromium browsers).
 3. Toggle **Developer mode** (top-right corner).
 4. Click **Load unpacked**.

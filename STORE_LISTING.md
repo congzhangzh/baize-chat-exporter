@@ -103,7 +103,7 @@ If a site you care about is on this list, you can sponsor faster delivery (links
 
 📖 OPEN SOURCE
 
-https://github.com/congzhangzh/sorry_gemini
+https://github.com/congzhangzh/baize-chat-exporter
 
 Like the tool? You can sponsor faster Roadmap delivery on GitHub Sponsors or Ko-fi (links in the popup). The extension stays free and open source — sponsorship only influences which adapter gets prioritized next.
 
@@ -183,7 +183,7 @@ Gemini、ChatGPT、Claude、Meta AI、WhatsApp、自部署的 OpenWebUI——每
 ━━━━━━━━━━━━━━━━━━━━━━
 
 📖 完全开源
-https://github.com/congzhangzh/sorry_gemini
+https://github.com/congzhangzh/baize-chat-exporter
 
 喜欢这工具? 你可以通过 popup 里的 GitHub Sponsors / Ko-fi 链接赞助,加速 Roadmap 上某个站点的落地。扩展本身免费开源,赞助仅影响优先级。
 ```
@@ -231,10 +231,10 @@ The extension only fetches resources that are already part of the AI chat page y
 
 ## Open Source
 The complete source code is available at:
-https://github.com/congzhangzh/sorry_gemini
+https://github.com/congzhangzh/baize-chat-exporter
 
 ## Contact
-https://github.com/congzhangzh/sorry_gemini/issues
+https://github.com/congzhangzh/baize-chat-exporter/issues
 ```
 
 ---
