@@ -26,10 +26,18 @@
       font-size: 15px;
       font-weight: 600;
       color: #cba6f7;
+      /* Locale-dependent name lengths must not push the site pill out. */
+      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .header .site-pill {
       margin-left: auto;
+      flex-shrink: 0;
+      white-space: nowrap;
       font-size: 11px;
       padding: 2px 8px;
       border-radius: 999px;
