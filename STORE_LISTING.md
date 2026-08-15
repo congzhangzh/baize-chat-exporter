@@ -84,7 +84,7 @@ No telemetry. No network calls except fetching the page's own images. End-to-end
 More adapters are added on demand, not in big batches. Currently in the queue:
 
 Chinese: DeepSeek · Doubao · Tencent Yuanbao (Hunyuan) · Kimi · Zhipu (ChatGLM) · Qwen · Wenxin · Spark · MiniMax · StepFun · 01.AI · Baichuan
-English: HuggingChat · Perplexity · Grok · Mistral Le Chat · Microsoft Copilot · Pi
+English: HuggingChat · Perplexity · Grok (SpaceXAI) · Mistral Le Chat · Microsoft Copilot · Pi · Character.AI
 
 If a site you care about is on this list, you can sponsor faster delivery (links inside the popup).
 
@@ -165,7 +165,7 @@ Gemini、ChatGPT、Claude、Meta AI、WhatsApp、自部署的 OpenWebUI——每
 新适配器按真实需求添加,不批量上线。当前 Roadmap:
 
 中文圈: DeepSeek · 豆包 · 腾讯元宝(混元) · Kimi · 智谱清言 · 通义千问 · 文心一言 · 讯飞星火 · MiniMax 海螺 · 阶跃跃问 · 零一万物 · 百小应
-英文圈: HuggingChat · Perplexity · Grok · Mistral Le Chat · Microsoft Copilot · Pi
+英文圈: HuggingChat · Perplexity · Grok (SpaceXAI) · Mistral Le Chat · Microsoft Copilot · Pi · Character.AI
 
 如果你关注的站点在列表上,可以通过 popup 内的赞助链接让它优先上线。
 

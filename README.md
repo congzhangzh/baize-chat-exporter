@@ -219,7 +219,7 @@ The extension icon appears in the toolbar; pin it for one-click access. Firefox 
 The framework already covers six sites. Additional adapters are intentionally added on demand — we'd rather ship two solid adapters than ten flaky ones. See [RELEASE_NOTES.md](RELEASE_NOTES.md) for the full per-site queue. Headline candidates:
 
 - 中文圈：DeepSeek · 豆包 · 腾讯元宝（混元）· Kimi · 智谱清言 · 通义千问 · 文心一言 · 讯飞星火 · MiniMax 海螺 · 阶跃跃问 · 零一万物 · 百小应
-- 英文圈：HuggingChat · Perplexity · Grok · Mistral Le Chat · Microsoft Copilot · Pi
+- 英文圈：HuggingChat · Perplexity · Grok (SpaceXAI) · Mistral Le Chat · Microsoft Copilot · Pi · Character.AI
 
 All of these are **community-wanted** — an adapter is ~100 lines and [CONTRIBUTING.md](CONTRIBUTING.md) walks you through it. Want one prioritized by the maintainer instead? See [Sponsor a site](#sponsor-a-site) below.
 
