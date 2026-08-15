@@ -66,7 +66,9 @@ const ADAPTER_FILE = {
 };
 
 // Shorthand for chrome.i18n.getMessage; substitutions must be strings.
-const t = (key, subs) => chrome.i18n.getMessage(key, subs);
+// Falls back to the static HTML text outside the extension context
+// (direct file preview, e.g. for store screenshots).
+const t = (key, subs) => (chrome.i18n ? chrome.i18n.getMessage(key, subs) : '');
 
 // ----------------------------------------------------------
 // Storage helpers
@@ -179,7 +181,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.title = t('appName') || document.title;
   document.documentElement.lang = chrome.i18n.getUILanguage();
-  document.getElementById('ext-version').textContent = chrome.runtime.getManifest().version;
+  document.getElementById('ext-version').textContent =
+    chrome.runtime?.getManifest?.().version || '';
 
   const btnDownload    = document.getElementById('btn-download');
   const btnDownloadTxt = document.getElementById('btn-download-text');
