@@ -57,5 +57,6 @@
   "errDownloadFail": { "message": "Download failed: $1" },
 
   "errAdapterDisabled": { "message": "$1 is disabled in Site configuration. Re-enable it in the popup." },
-  "errNoConversation": { "message": "No conversation found. Make sure the $1 page has finished loading." }
+  "errNoConversation": { "message": "No conversation found. Make sure the $1 page has finished loading." },
+  "warnVirtualizedTurns": { "message": "$1 turns were still unloaded when the export ran (this site virtualizes long chats). Keep the tab in the foreground, scroll through the whole conversation once, then export again." }
 }

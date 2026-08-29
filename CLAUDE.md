@@ -247,7 +247,20 @@ must:
    jump-to-top then jump-to-bottom (which skips the middle).
 
 See `scrollToLoadMore` in `content/adapters/whatsapp.js` for the
-reference implementation.
+reference implementation, and `content/adapters/chatgpt.js` for the
+harsher variant: turns are unrendered again when they leave the
+viewport and even their outer wrappers are dropped far away, so the
+adapter harvests clones *during* the sweep, accumulates order across
+ticks, and returns them through `collectTurns()`.
+
+**Before concluding "scrolling does not materialize anything", check
+`document.visibilityState`.** IntersectionObserver-driven virtualizers
+only react when the browser renders frames; a hidden or occluded tab
+renders none, so every programmatic scroll experiment is meaningless
+there (2026-08-29: an hour lost to this on a remote X display). When
+driving the page from an automation tool, force frames with real wheel
+events; when a user reports missing turns, ask whether the tab was in
+the foreground during export.
 
 ### Step 4 — Spot-check one bubble
 
@@ -315,10 +328,15 @@ incident behind it (see whatsapp.js failure history for receipts).
 3. **Resolve the scroller bottom-up.** Look for an explicit testid
    first (`conversation-panel-messages` etc.). Failing that, walk up
    from a bubble until `getComputedStyle(el).overflowY` is
-   `auto`/`scroll` and `scrollHeight > clientHeight`. Don't guess.
+   `auto`/`scroll` and `scrollHeight > clientHeight`. Don't guess, and
+   don't skip the `overflowY` check: ChatGPT's `<main>` passes the
+   height test while being `overflow: visible`, so writes to its
+   `scrollTop` silently did nothing for months.
 4. **Dedup by stable id, not by position.** For virtualized lists, the
    outer wrapper carries the id; the inner role-bearing div doesn't.
-   Iterate the outer, capture the inner.
+   Iterate the outer, capture the inner. If the site also drops outer
+   wrappers far from the viewport, accumulate order across ticks
+   instead of reading it off the DOM at export time.
 5. **Incrementally sweep virtualized lists.** Two-jump (`top` →
    `bottom`) skips the middle. Step by ~`clientHeight * 0.75`.
 6. **Layer your selectors.** Minimum two fallbacks per adapter. Each

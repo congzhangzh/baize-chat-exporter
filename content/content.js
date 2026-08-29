@@ -82,19 +82,38 @@
   // ----------------------------------------------------------
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+  function isScrollable(el) {
+    const s = getComputedStyle(el);
+    return (s.overflowY === 'auto' || s.overflowY === 'scroll') &&
+      el.scrollHeight > el.clientHeight + 10;
+  }
+
+  // scrollHeight > clientHeight is NOT enough: ChatGPT's <main> satisfies it
+  // while being overflow:visible, so `main.scrollTop = N` silently did
+  // nothing. Require a real overflow scroller first; only fall back to the
+  // lenient height check when no ancestor declares overflow at all.
   function findScrollContainer() {
-    const candidate = queryFirst(adapter.selectors?.chatContainer || []);
-    if (candidate && candidate.scrollHeight > candidate.clientHeight) return candidate;
+    const candidates = adapter.selectors?.chatContainer || [];
+    for (const sel of (Array.isArray(candidates) ? candidates : [candidates])) {
+      let el = null;
+      try { el = document.querySelector(sel); } catch (_) { /* skip */ }
+      if (el && isScrollable(el)) return el;
+    }
 
     const firstTurn = queryFirst(adapter.selectors?.conversationTurn || []);
     if (firstTurn) {
       let el = firstTurn.parentElement;
       while (el && el !== document.body) {
+        if (isScrollable(el)) return el;
+        el = el.parentElement;
+      }
+      el = firstTurn.parentElement;
+      while (el && el !== document.body) {
         if (el.scrollHeight > el.clientHeight + 10) return el;
         el = el.parentElement;
       }
     }
-    return document.documentElement;
+    return document.scrollingElement || document.documentElement;
   }
 
   function triggerScrollEvent(container) {
@@ -187,7 +206,27 @@
   // ----------------------------------------------------------
   // Turn-based extraction
   // ----------------------------------------------------------
+  let activeTurndown = null;
+
+  // All hits of the first matching selector, minus the ones nested inside
+  // another hit (Canvas embeds a .markdown inside the reply's .markdown).
+  function queryAllTopLevel(selectorList, root) {
+    const hits = queryAll(selectorList, root);
+    return hits.filter(el => !hits.some(o => o !== el && o.contains(el)));
+  }
+
   function extractUserText(userEl) {
+    // Messages the user typed as markdown render as .markdown with no
+    // plain-text node; convert them properly instead of joining textContent.
+    if (adapter.selectors.userQueryHtml && activeTurndown) {
+      const blocks = queryAllTopLevel(adapter.selectors.userQueryHtml, userEl);
+      if (blocks.length > 0) {
+        return blocks
+          .map(b => cleanMarkdown(activeTurndown.turndown(b.cloneNode(true).innerHTML)))
+          .filter(t => t.length > 0)
+          .join('\n\n');
+      }
+    }
     const lines = queryAll(adapter.selectors.userQueryText, userEl);
     if (lines.length > 0) {
       return lines.map(l => l.textContent.trim()).filter(t => t.length > 0).join('\n');
@@ -196,13 +235,20 @@
   }
 
   function extractModelHtml(modelEl) {
-    const contentEl = queryFirst(adapter.selectors.modelResponseContent, modelEl);
-    if (!contentEl) return null;
-    const clone = contentEl.cloneNode(true);
-    if (typeof adapter.cleanResponseClone === 'function') {
-      adapter.cleanResponseClone(clone);
-    }
-    return clone.innerHTML;
+    // A reply can be split into several sibling content blocks (text,
+    // generated image, more text). Adapters that have verified their first
+    // selector never matches non-answer blocks opt in via joinResponseBlocks.
+    const blocks = adapter.joinResponseBlocks
+      ? queryAllTopLevel(adapter.selectors.modelResponseContent, modelEl)
+      : [queryFirst(adapter.selectors.modelResponseContent, modelEl)].filter(Boolean);
+    if (blocks.length === 0) return null;
+    return blocks.map(block => {
+      const clone = block.cloneNode(true);
+      if (typeof adapter.cleanResponseClone === 'function') {
+        adapter.cleanResponseClone(clone);
+      }
+      return clone.innerHTML;
+    }).join('\n');
   }
 
   function extractImagesFromElement(el, selectorList) {
@@ -241,8 +287,18 @@
     return extractImagesFromElement(userEl, adapter.selectors.userUploadedImages || []);
   }
 
+  function hasContent(t) {
+    return !!(t.userText || t.modelHtml ||
+      (t.images && t.images.length) || (t.userImages && t.userImages.length));
+  }
+
   function extractTurnConversation(includeImages) {
-    const turns = queryAll(adapter.selectors.conversationTurn);
+    // Virtualizing sites (ChatGPT) hand back cached clones harvested during
+    // scrollToLoadMore, because the live DOM only holds the turns near the
+    // viewport at any given moment.
+    const turns = typeof adapter.collectTurns === 'function'
+      ? adapter.collectTurns()
+      : queryAll(adapter.selectors.conversationTurn);
     registry.log('Turn count from primary selectors:', turns.length);
 
     if (turns.length === 0) {
@@ -263,7 +319,7 @@
         modelLabel,
         images: modelEl ? extractImages(modelEl, includeImages) : []
       };
-    }).filter(t => t.userText || t.modelHtml);
+    }).filter(hasContent);
   }
 
   function extractTurnConversationFallback(includeImages) {
@@ -302,7 +358,7 @@
       }
     }
     if (currentTurn) turns.push(currentTurn);
-    return turns.filter(t => t.userText || t.modelHtml);
+    return turns.filter(hasContent);
   }
 
   // ----------------------------------------------------------
@@ -470,10 +526,10 @@
         }
         md += `---\n\n`;
       }
-      if (turn.modelHtml) {
+      if (turn.modelHtml || (turn.images && turn.images.length > 0)) {
         const label = turn.modelLabel || adapter.displayName;
         md += `## ${label}\n\n`;
-        md += `${cleanMarkdown(td.turndown(turn.modelHtml))}\n\n`;
+        if (turn.modelHtml) md += `${cleanMarkdown(td.turndown(turn.modelHtml))}\n\n`;
         if (turn.images && turn.images.length > 0) {
           turn.images.forEach(img => {
             md += `![${img.alt}](${img.url})\n\n`;
@@ -539,6 +595,7 @@
           }
 
           const td = buildTurndownService();
+          activeTurndown = td;
           let markdown;
           let extractedImages = [];
           let unitCount = 0;
@@ -582,8 +639,20 @@
           const title = getTitle();
           const filenameBase = sanitizeFilename(title);
 
+          // Adapters flag partial captures (e.g. turns that never
+          // materialized) as { key, args }; translate here so adapters
+          // stay free of chrome.* calls.
+          let warning = null;
+          if (adapter.lastWarning && adapter.lastWarning.key) {
+            try {
+              warning = chrome.i18n.getMessage(adapter.lastWarning.key, adapter.lastWarning.args || []);
+            } catch (_) { /* fall through */ }
+            registry.log('Adapter warning:', adapter.lastWarning);
+          }
+
           sendResponse({
             status: 'done',
+            warning,
             mode,
             markdown,
             filename: filenameBase + (imageMode === 'extract' ? '.zip' : '.md'),

@@ -326,6 +326,9 @@ document.addEventListener('DOMContentLoaded', () => {
     errorEl.textContent = '';
   }
   function setError(msg) { errorEl.textContent = msg; statusEl.textContent = ''; }
+  // Non-fatal adapter warnings (e.g. turns that never materialized) go in
+  // the error slot so they are impossible to miss, but keep the status line.
+  function showWarning(msg) { if (msg) errorEl.textContent = msg; }
   function setButtons(disabled) { btnDownload.disabled = disabled; btnClipboard.disabled = disabled; }
 
   // --------------------------------------------------------
@@ -690,6 +693,7 @@ document.addEventListener('DOMContentLoaded', () => {
         await navigator.clipboard.writeText(response.markdown);
         if (spoolEnabled) spoolMarkdown(response);
         setStatus(t('statusCopied', [exportSummary(false)]));
+        showWarning(response.warning);
       } catch (err) {
         setError(t('errCopyFail', [err.message]));
       }
@@ -705,11 +709,13 @@ document.addEventListener('DOMContentLoaded', () => {
           downloadFile(zipDataUrl, response.filenameBase + '.zip');
           if (spoolEnabled) spoolMarkdown(response);
           setStatus(t('statusDownloadStarted', [exportSummary(true)]));
+          showWarning(response.warning);
         } else {
           const dataUrl = textToDataUrl(response.markdown);
           downloadFile(dataUrl, response.filenameBase + '.md');
           if (spoolEnabled) spoolMarkdown(response);
           setStatus(t('statusDownloadStarted', [exportSummary(false)]));
+          showWarning(response.warning);
         }
       } catch (err) {
         setError(t('errDownloadFail', [err.message]));

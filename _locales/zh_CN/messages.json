@@ -57,5 +57,6 @@
   "errDownloadFail": { "message": "下载失败：$1" },
 
   "errAdapterDisabled": { "message": "已在设置里禁用 $1 适配器，请在弹窗内重新启用。" },
-  "errNoConversation": { "message": "未找到对话内容。请确认 $1 页面已加载完成。" }
+  "errNoConversation": { "message": "未找到对话内容。请确认 $1 页面已加载完成。" },
+  "warnVirtualizedTurns": { "message": "导出时仍有 $1 轮对话未加载（该网站对长对话做了虚拟化渲染）。请保持标签页在前台，手动把整个对话滚动浏览一遍后再重新导出。" }
 }

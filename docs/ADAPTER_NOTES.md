@@ -53,7 +53,10 @@ DOM. All fallback layers also return 0, because they're all
    scroll container, etc).
 3. If you genuinely need a single scrollable element (for virtualized
    lists), still resolve it bottom-up: starting from a bubble, walk up
-   until `overflowY` is `auto`/`scroll`.
+   until `overflowY` is `auto`/`scroll`. **Check `overflowY`, not just
+   `scrollHeight > clientHeight`**: ChatGPT's `<main>` is taller than its
+   box but `overflow: visible`, so `main.scrollTop = N` is a silent no-op.
+   The real scroller (`[data-scroll-root]`) is an *ancestor* of `<main>`.
 
 Historical example: WhatsApp `#main` → `[data-tab="8"]` migration
 (2026-05) — see `content/adapters/whatsapp.js` header.
@@ -169,6 +172,54 @@ async scrollToLoadMore(onProgress) {
 Stash the result on `this._cachedBubbles` so `collectBubbles()` can
 return them in DOM order without re-querying.
 
+### 4.4 Bidirectional virtualization + sliding window (ChatGPT, 2026-08)
+
+WhatsApp only virtualizes rows that were never scrolled into view.
+ChatGPT is harsher, and the same pattern will show up elsewhere:
+
+- **Both directions.** A turn that leaves the viewport (plus some
+  margin) is swapped back for an empty
+  `[data-turn-id-container][data-is-intersecting="false"]` div sized by
+  `--last-known-height`. Content you saw a second ago is gone from the
+  DOM. So the export cannot "scroll to load everything, then read the
+  DOM" - it has to **harvest during the sweep** and hand the framework
+  cached clones (`collectTurns()` for turn-based adapters, the mirror of
+  `collectBubbles()`).
+- **The wrapper list itself is a window.** Far enough away, even the
+  outer wrapper is removed (27 -> 19 wrappers observed mid-sweep).
+  Conversation order therefore has to be *accumulated* across ticks:
+  merge each tick's contiguous id sequence into a global order
+  (`mergeOrder()` in `chatgpt.js`), never read order off the DOM at
+  export time.
+- **Older history is fetched lazily on the way up.** Pass A walks up in
+  viewport steps until `scrollTop === 0` *and* the wrapper count has been
+  stable for a few ticks - a single `scrollTop = 0` jump is not enough.
+- **Nested id carriers.** The materialized `<section>` carries the same
+  `data-turn-id-container` as its wrapper, so a naive
+  `querySelectorAll` double-counts every live turn. Keep only wrappers
+  that have no wrapper ancestor.
+- **Materialization needs rendered frames.** It is
+  IntersectionObserver-driven; in a hidden or occluded tab
+  (`document.visibilityState === 'hidden'`) rAF and IO are paused and
+  programmatic scrolling materializes nothing, however long you wait.
+  Log the visibility state, and when turns are still virtualized at
+  export time report it (`adapter.lastWarning = { key, args }` ->
+  popup) instead of silently shipping a partial file.
+
+Probe (page console):
+
+```js
+[...document.querySelectorAll('[data-turn-id-container]')]
+  .filter(w => !w.parentElement.closest('[data-turn-id-container]'))
+  .map(w => (w.querySelector('[data-testid^="conversation-turn"]') ? '*' : '.')
+            + (w.getAttribute('data-is-intersecting') || '?')[0]).join(' ')
+```
+
+`*` = materialized, `.` = empty placeholder. If you see `.f` entries
+while those placeholders are inside the viewport, the tab is not
+rendering - bring it to the foreground before trusting any conclusion
+about "programmatic scroll does not work".
+
 ---
 
 ## 5. Diagnostic toggle
@@ -266,6 +317,9 @@ You don't need image-mode logic in the adapter — just return the URLs
       (or override extraction hooks documented in `content.js`)
 - [ ] If `bubble-based`: implement `collectBubbles()` and (when the
       site virtualizes) `scrollToLoadMore(onProgress)`
+- [ ] If the site unrenders turns that leave the viewport, also implement
+      `collectTurns()` returning cached clones in accumulated order, and
+      set `lastWarning` when some ids never materialized (see 4.4)
 - [ ] Two layers of fallback selectors minimum
 - [ ] `debugLog()` covering panel + layer counts
 - [ ] Header comment with: anchor priority, failure history,

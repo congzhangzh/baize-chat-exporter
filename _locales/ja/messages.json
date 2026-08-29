@@ -57,5 +57,6 @@
   "errDownloadFail": { "message": "ダウンロードに失敗しました: $1" },
 
   "errAdapterDisabled": { "message": "$1 はサイト設定で無効になっています。ポップアップで再度有効にしてください。" },
-  "errNoConversation": { "message": "会話が見つかりません。$1 のページが読み込み済みか確認してください。" }
+  "errNoConversation": { "message": "会話が見つかりません。$1 のページが読み込み済みか確認してください。" },
+  "warnVirtualizedTurns": { "message": "エクスポート時に $1 件のターンが未読み込みでした（このサイトは長い会話を仮想化表示します）。タブを前面に表示したまま会話全体を一度スクロールしてから、再度エクスポートしてください。" }
 }
