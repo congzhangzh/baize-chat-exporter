@@ -79,6 +79,22 @@
 // -----------------------------------------------------------
 // Failure history
 // -----------------------------------------------------------
+//   - 2026-09-28: "can't stop, retries forever at the top, and sometimes
+//     doesn't refresh at the top". Root cause: at devicePixelRatio
+//     1.40625 the column-reverse scroller pins at scrollTop -4989.87 vs
+//     a bound of -4991, so `scrollTop > min + 1` read as "not at top"
+//     forever and pass A ran into the shared 120s deadline, leaving
+//     pass B no time. Separately, once pinned at the top a fetch that
+//     missed its trigger never retries: "Loading older messages..."
+//     sat unchanged for 60 ticks, and only a real wheel event loaded
+//     more (scrollHeight 2647 -> 5831). Fix: atTopEdge() with 2px
+//     slack plus a "did not move" test, a time-based idle exit keyed
+//     on known ids + scrollHeight, a half-viewport nudge off the top
+//     while idle, and separate budgets for pass A and pass B. The
+//     status text stays in the DOM when idle, so it is not a usable
+//     "still loading" signal. Verified in the page: pass A ends "idle at
+//     top" in 16s (hidden tab), and pass B then reaches the bottom;
+//     the reporter confirmed a full export in a foreground tab.
 //   - 2026-09-28: "it does not work on ChatGPT anymore" (Plus account,
 //     Chat and Work mode). Root cause: a new app-shell layout. Probe on a
 //     Work conversation: turnWrapper 0, convTurn 0, sectionTurn 0,
@@ -171,9 +187,17 @@
   ];
 
   const SCROLL_DELAY_MS = 450;
-  const STABLE_TICKS_AT_TOP = 5;
+  // How long to sit at the top with nothing new arriving before pass A
+  // gives up. Time-based, not tick-based, so a slow history fetch gets the
+  // same grace whatever the tick length.
+  const TOP_IDLE_MS = 6000;
+  // Fractional pixels at non-integer devicePixelRatio: a column-reverse
+  // scroller pinned at its top was measured at -4989.87 vs a bound of -4991.
+  const EDGE_EPSILON_PX = 2;
   const MAX_TICKS = 400;
-  const MAX_SWEEP_MS = 120000;
+  // Separate budgets so a pass A that runs long can never starve pass B.
+  const MAX_UP_MS = 90000;
+  const MAX_DOWN_MS = 90000;
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -248,9 +272,10 @@
     },
 
     // Incremental sweep. Two passes over the real scroller:
-    //   A. walk UP to scrollTop 0. Older turns are fetched lazily on the
-    //      way, so the wrapper list keeps growing; stop only once we sit
-    //      at the top and the count has been stable for a few ticks.
+    //   A. walk UP to the top edge. Older turns are fetched lazily on the
+    //      way, so the known-id list keeps growing; stop once we have sat
+    //      at the top for TOP_IDLE_MS with nothing new, nudging the
+    //      scroller off the edge meanwhile to re-trigger the fetch.
     //   B. walk DOWN by ~0.75 viewport steps to the bottom, harvesting
     //      after every step. Jumping straight to the bottom would leave
     //      everything in between virtualized.
@@ -275,36 +300,52 @@
 
       const savedTop = scroller.scrollTop;
       const step = Math.max(scroller.clientHeight * 0.75, 200);
-      const deadline = Date.now() + MAX_SWEEP_MS;
 
-      // The app-shell layout pages older turns in without growing the
-      // (windowed) wrapper count, so scrollHeight is part of the
-      // "nothing new arrived" signature.
+      // "Nothing new arrived" = same known-id count AND same scrollHeight:
+      // the app-shell layout pages older turns in without growing the
+      // (windowed) wrapper count. The id count only ever grows, so the
+      // signature cannot flip-flop forever the way a live count can.
       collect();
-      let stable = 0;
       let lastSig = '';
-      for (let i = 0; i < MAX_TICKS && stable < STABLE_TICKS_AT_TOP && Date.now() < deadline; i++) {
-        scroller.scrollTop = Math.max(scrollBounds(scroller).min, scroller.scrollTop - step);
-        await sleep(SCROLL_DELAY_MS);
-        const wrappers = collect();
-        if (scroller.scrollTop > scrollBounds(scroller).min + 1) {
-          stable = 0;
-          continue;
-        }
-        const sig = wrappers + ':' + scroller.scrollHeight;
-        if (sig === lastSig) stable++;
-        else { stable = 0; lastSig = sig; }
-      }
-      debugLog('pass A (up) done: wrappers:scrollHeight =', lastSig, 'cached =', cache.turns.size);
-
-      let lastTop = NaN;
-      for (let i = 0; i < MAX_TICKS && Date.now() < deadline; i++) {
-        if (scroller.scrollTop >= scrollBounds(scroller).max - 1) break;
-        if (scroller.scrollTop === lastTop) break;
-        lastTop = scroller.scrollTop;
-        scroller.scrollTop = lastTop + step;
+      let idleSince = 0;
+      let nudges = 0;
+      let reason = 'max ticks';
+      const upDeadline = Date.now() + MAX_UP_MS;
+      for (let i = 0; i < MAX_TICKS; i++) {
+        if (Date.now() >= upDeadline) { reason = 'time budget'; break; }
+        const before = scroller.scrollTop;
+        scroller.scrollTop = Math.max(scrollBounds(scroller).min, before - step);
         await sleep(SCROLL_DELAY_MS);
         collect();
+        if (!atTopEdge(scroller, before)) {
+          idleSince = 0;
+          continue;
+        }
+        const sig = cache.order.length + ':' + scroller.scrollHeight;
+        if (sig !== lastSig) {
+          lastSig = sig;
+          idleSince = Date.now();
+          continue;
+        }
+        if (Date.now() - idleSince >= TOP_IDLE_MS) { reason = 'idle at top'; break; }
+        // Pinned at the top, writing the same scrollTop fires no scroll
+        // event, so a history fetch that missed its trigger never retries.
+        // Back off half a viewport; the next tick scrolls up across the
+        // loader's sentinel again.
+        scroller.scrollTop = scrollBounds(scroller).min + scroller.clientHeight * 0.5;
+        nudges++;
+      }
+      debugLog('pass A (up) done:', reason, '| ids:scrollHeight =', lastSig,
+        '| nudges =', nudges, '| cached =', cache.turns.size);
+
+      const downDeadline = Date.now() + MAX_DOWN_MS;
+      for (let i = 0; i < MAX_TICKS && Date.now() < downDeadline; i++) {
+        const before = scroller.scrollTop;
+        if (before >= scrollBounds(scroller).max - EDGE_EPSILON_PX) break;
+        scroller.scrollTop = before + step;
+        await sleep(SCROLL_DELAY_MS);
+        collect();
+        if (Math.abs(scroller.scrollTop - before) < 1) break;
       }
       scroller.scrollTop = scrollBounds(scroller).max;
       await sleep(SCROLL_DELAY_MS);
@@ -427,6 +468,15 @@
     return getComputedStyle(el).flexDirection === 'column-reverse'
       ? { min: -range, max: 0 }
       : { min: 0, max: range };
+  }
+
+  // At the top when within EDGE_EPSILON_PX of the bound, or when a scroll
+  // up from `before` did not move at all. Either alone is not enough: the
+  // bound can be unreachable by a fraction of a pixel, and a real move of
+  // less than a pixel happens right at the edge.
+  function atTopEdge(el, before) {
+    return el.scrollTop - scrollBounds(el).min <= EDGE_EPSILON_PX ||
+      Math.abs(el.scrollTop - before) < 1;
   }
 
   function isScrollable(el) {

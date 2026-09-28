@@ -253,6 +253,29 @@ window stays the same size, the wrapper count stops being a useful
 "nothing new arrived" signal. Include `scrollHeight` in the stability
 signature.
 
+#### 4.5.1 Edge checks need slack, and every loop needs an exit
+
+Two more traps from the same scroller (ChatGPT, 2026-09-28):
+
+- **The bound is not always reachable.** At a non-integer
+  `devicePixelRatio` (1.40625 measured), a scroller pinned at its top
+  sat at `scrollTop = -4989.87` with `-(scrollHeight - clientHeight) =
+  -4991`. An `atTop = scrollTop <= min + 1` check was never true, the
+  "stable at top" counter reset every tick, and the export spun until
+  its deadline. Test the edge with a few pixels of slack, **or** with
+  "I asked it to move and it did not": `|scrollTop - before| < 1`.
+- **Pinned at an edge, nothing retries.** Writing the same `scrollTop`
+  again fires no `scroll` event, so a lazy history fetch that missed its
+  trigger never fires again. While idling at the edge, nudge the
+  scroller half a viewport away so the next tick crosses the loader's
+  sentinel again.
+
+Also give every pass its own time budget. One shared deadline let a
+stuck pass A starve pass B, so the export ran for minutes and still
+missed most turns. Key the "idle" exit on elapsed time rather than tick
+count, and use a monotonic signal (known ids so far) instead of a live
+count that can go up and down as the window slides.
+
 ### 4.6 One site, two layouts: rollouts are per account
 
 A site can serve completely different DOMs to different accounts at
