@@ -220,6 +220,63 @@ while those placeholders are inside the viewport, the tab is not
 rendering - bring it to the foreground before trusting any conclusion
 about "programmatic scroll does not work".
 
+### 4.5 Reversed scrollers: `scrollTop` can be negative (ChatGPT, 2026-09)
+
+Chat UIs that "stick to the bottom" often render the thread in a
+`flex-direction: column-reverse` scroller. In Chromium that flips the
+coordinate system: **`scrollTop` is `0` at the bottom and runs down to
+`-(scrollHeight - clientHeight)` at the top.** Any sweep written for
+the normal orientation breaks silently:
+
+- `Math.max(0, scrollTop - step)` pins the scroller at the bottom - the
+  "walk up" loop never moves, and the "we're at the top" check
+  (`scrollTop === 0`) is true immediately.
+- `scrollTop = scrollHeight` ("go to the bottom") is clamped to `0` and
+  happens to work, which hides the bug during a quick manual test.
+
+Rule: never hard-code `0` as the top. Derive both ends from the element:
+
+```js
+function scrollBounds(el) {
+  const range = Math.max(0, el.scrollHeight - el.clientHeight);
+  return getComputedStyle(el).flexDirection === 'column-reverse'
+    ? { min: -range, max: 0 }
+    : { min: 0, max: range };
+}
+```
+
+`scrollTop -= step` means "up" in both orientations, so only the clamps
+and the end-of-sweep checks need `scrollBounds()`.
+
+Related: when a layout pages older history in while the *rendered*
+window stays the same size, the wrapper count stops being a useful
+"nothing new arrived" signal. Include `scrollHeight` in the stability
+signature.
+
+### 4.6 One site, two layouts: rollouts are per account
+
+A site can serve completely different DOMs to different accounts at
+the same time. On 2026-09-28 ChatGPT gave a free account the legacy
+`<section data-turn>` layout and a Plus account a new "app-shell"
+layout (`[data-turn-key]` pairs, hashed `MarkdownRoot-*` classes, a
+reversed scroller), both at `chatgpt.com/c/<id>`. "Works on my machine"
+meant "works on my account".
+
+- When a report doesn't reproduce, **ask which account / plan / mode
+  the user was on** before concluding the adapter is fine, and test in
+  that account (a separate Chrome profile works).
+- Keep both anchor sets in the adapter until the old layout is gone
+  everywhere, and document each one as its own table in the file
+  header.
+- When the new layout uses a different turn *shape* (e.g. one block per
+  user+assistant pair instead of one per message), normalize it at
+  harvest time into the shape the framework already reads, rather than
+  teaching the framework a second shape.
+- Hashed CSS-module classes (`MarkdownRoot-rZKhxa`) are priority 4 in
+  §1, but the stable prefix is often the best anchor available. Match it
+  with `[class*="MarkdownRoot"]`, never the full hashed name, and keep it
+  as the *last* layer.
+
 ---
 
 ## 5. Diagnostic toggle

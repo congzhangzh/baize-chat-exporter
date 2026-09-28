@@ -134,6 +134,16 @@ Page consoles on big sites are noisy. **Ignore unless they mention
 These are the site's own noise. They are **never** the cause of an
 export failure. Chasing them wastes 30 minutes per incident.
 
+**If the bug does not reproduce, suspect a different layout, not a
+flaky user.** Sites roll out redesigns per account or per plan. On
+2026-09-28 every ChatGPT anchor passed on a free account, while the
+reporter's Plus account had a completely different DOM (see
+`ADAPTER_NOTES.md` §4.6). Ask which account, plan, and mode (e.g.
+ChatGPT Chat vs Work) they used, then debug in that account. When
+driving the browser through Claude in Chrome, each Chrome profile with
+the extension signed in shows up as a separate browser. Pick the one
+logged into the affected account.
+
 ### Step 1 — Turn on debug logging
 
 In the **page console** (not the extension console — the tab's own

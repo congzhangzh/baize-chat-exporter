@@ -1,8 +1,17 @@
 // ============================================================
 // AI Chat Exporter - ChatGPT Adapter (turn-based, virtualized)
 //
+// ChatGPT currently serves TWO page layouts, per account rather than
+// per conversation, so the adapter supports both and picks whichever
+// the live DOM has:
+//   - LEGACY layout (seen on free accounts, 2026-09): one <section> per
+//     message, described right below.
+//   - APP-SHELL layout (seen on a Plus account, 2026-09-28, for both the
+//     Chat and Work modes): one [data-turn-key] block per user+assistant
+//     pair, described in the second anchor table.
+//
 // -----------------------------------------------------------
-// Anchor priority (verified against live chatgpt.com DOM, 2026-08-29)
+// Anchor priority - LEGACY layout (verified 2026-08-29, re-checked 2026-09-28)
 // -----------------------------------------------------------
 //   1. [data-turn-id-container]  OUTER wrapper, one per turn. Exists in
 //      BOTH states: materialized (contains the <section>) and virtualized
@@ -29,8 +38,60 @@
 //      silent no-op.
 //
 // -----------------------------------------------------------
+// Anchor priority - APP-SHELL layout (verified 2026-09-28, Chat + Work)
+// -----------------------------------------------------------
+//   1. [data-turn-key]  one block per user+assistant PAIR; the value is
+//      the user message UUID, so it is the dedup key. The list is a
+//      plain virtual window (~4 blocks inside a tall div.relative): turns
+//      outside it leave NO placeholder at all, so order is accumulated
+//      across ticks exactly like the legacy layout.
+//   2. [data-user-message-bubble]  the user's bubble. Reactions (an emoji
+//      badge) sit next to it, not inside, so reading the bubble keeps them
+//      out. Text lives in [data-search-result-target] > div[dir=auto].
+//   3. [data-content-search-unit-key$=":assistant"]  assistant unit(s);
+//      [data-chatgpt-selection-message-id] is the fallback. The "Worked
+//      for 41s" reasoning summary is a separate sibling, not inside it.
+//   4. [class*="MarkdownRoot"]  assistant body. The suffix is a CSS-module
+//      hash (MarkdownRoot-rZKhxa), hence the substring match. There is no
+//      .markdown class and no <pre>: code blocks are
+//      div[data-markdown-copy="code-block"] with a language header marked
+//      data-markdown-copy="exclude", inline code is
+//      span[data-markdown-copy="inline-code"]. cleanResponseClone()
+//      rewrites both to <pre><code>/<code> so turndown fences them.
+//      Rich Chat-mode replies (place cards, photo strips, wide tables)
+//      also render INSIDE MarkdownRoot: photos sit inside
+//      <button aria-label="Open image N">, citation pills
+//      (a[data-testid="chatgpt-citation"]) carry 32px favicons, and UI
+//      buttons have visible text ("Add to Favorites"). stripShellWidgets()
+//      unwraps the photos and drops the rest at harvest time.
+//   5. [data-app-action-timeline-scroll]  the scroller. It is
+//      flex-direction: COLUMN-REVERSE: scrollTop is 0 at the BOTTOM and
+//      goes NEGATIVE towards the top. Older turns are paged in as the top
+//      is reached ("Loading older messages..." status).
+//
+//   Pair blocks are normalized at harvest time into
+//     section[data-ai-exporter-turn]
+//       div[data-ai-exporter-role=user] > div[data-ai-exporter-text] + imgs
+//       div[data-ai-exporter-role=assistant] > every assistant unit
+//   so the framework's single-query selectors see ONE user and ONE model
+//   node per turn, and multi-block Work replies are not cut to the first.
+//
+// -----------------------------------------------------------
 // Failure history
 // -----------------------------------------------------------
+//   - 2026-09-28: "it does not work on ChatGPT anymore" (Plus account,
+//     Chat and Work mode). Root cause: a new app-shell layout. Probe on a
+//     Work conversation: turnWrapper 0, convTurn 0, sectionTurn 0,
+//     markdown 0, [data-scroll-root] absent - every legacy anchor gone.
+//     Also, the scroller is column-reverse, so the old sweep's
+//     `Math.max(0, scrollTop - step)` could never move up at all. Fix:
+//     second anchor set (table above), direction-aware scroll bounds,
+//     sweep stop keyed on scrollHeight as well as wrapper count, pair
+//     normalization, code-block / inline-code rewrite, widget stripping.
+//     Free accounts still get the legacy layout, so both paths stay.
+//     Verified live: Work chat 16/16 turns, Chat-mode chat 10/10 turns
+//     (with photo strips and place cards: 9 photos kept, 0 UI buttons
+//     and 0 favicons left), legacy free-account chat unchanged.
 //   - 2026-08-29: "paragraphs / whole turns missing even after scrolling
 //     to the top". Root cause: ChatGPT virtualizes turns in BOTH
 //     directions. Turns leaving the viewport (plus a margin) are swapped
@@ -81,6 +142,19 @@
 //                 + w.getAttribute('data-is-intersecting')[0]).join(' ')
 //
 //   `*` = materialized, `.` = empty placeholder; t/f = intersecting.
+//
+//   App-shell layout probe (legacy counts all 0 = you are on this one):
+//
+//     (() => { const s = document.querySelector('[data-app-action-timeline-scroll]');
+//       return { turns: document.querySelectorAll('[data-turn-key]').length,
+//                md: document.querySelectorAll('[class*="MarkdownRoot"]').length,
+//                dir: s && getComputedStyle(s).flexDirection,
+//                top: s && s.scrollTop, sh: s && s.scrollHeight }; })()
+//
+//   A 16-turn Work chat showed at most ~4 turns in the DOM at once. In a
+//   hidden tab neither `scrollTop` writes nor waiting re-rendered the
+//   window, while real wheel events did - the same frames-needed rule
+//   as the legacy layout.
 // ============================================================
 
 (function () {
@@ -88,8 +162,16 @@
   const TURN_SECTION = '[data-testid^="conversation-turn"], section[data-turn]';
   const SENTINEL_IDS = new Set(['client-created-root']);
 
+  const SHELL_TURN = '[data-turn-key]';
+  const SHELL_SCROLLER = '[data-app-action-timeline-scroll]';
+  const SHELL_USER = ['[data-user-message-bubble]', '[data-content-search-unit-key$=":user"]'];
+  const SHELL_ASSISTANT = [
+    '[data-content-search-unit-key$=":assistant"]',
+    '[data-chatgpt-selection-message-id]'
+  ];
+
   const SCROLL_DELAY_MS = 450;
-  const STABLE_TICKS_AT_TOP = 4;
+  const STABLE_TICKS_AT_TOP = 5;
   const MAX_TICKS = 400;
   const MAX_SWEEP_MS = 120000;
 
@@ -106,32 +188,37 @@
     },
 
     selectors: {
-      chatContainer: ['[data-scroll-root]', 'main', '#__next main', '[role="main"]'],
+      chatContainer: [SHELL_SCROLLER, '[data-scroll-root]', 'main', '#__next main', '[role="main"]'],
       conversationTurn: [
         '[data-testid^="conversation-turn"]',
         'section[data-turn]',
+        SHELL_TURN,
         'article[data-testid^="conversation-turn"]',
         'main article'
       ],
       userQuery: [
         '[data-message-author-role="user"]',
+        '[data-ai-exporter-role="user"]',
         ':scope[data-turn="user"] > div'
       ],
       userQueryHtml: ['.markdown'],
       userQueryText: [
         '.whitespace-pre-wrap',
         '[data-message-content]',
-        '.text-message'
+        '.text-message',
+        '[data-ai-exporter-text]'
       ],
       modelResponse: [
         '[data-message-author-role="assistant"]',
+        '[data-ai-exporter-role="assistant"]',
         ':scope[data-turn="assistant"] > div'
       ],
       modelResponseContent: [
         '.markdown.prose',
         '.markdown',
         '.prose',
-        '[data-message-content]'
+        '[data-message-content]',
+        '[class*="MarkdownRoot"]'
       ],
       conversationTitle: [
         'nav a[aria-current="page"]',
@@ -140,12 +227,14 @@
       ],
       generatedImages: [
         '[data-message-author-role="assistant"] img[src]',
+        '[data-ai-exporter-role="assistant"] img[src]',
         '[class*="imagegen"] img[src]',
         'img[alt*="generated" i][src]',
         'figure img[src]'
       ],
       userUploadedImages: [
-        '[data-message-author-role="user"] img[src]'
+        '[data-message-author-role="user"] img[src]',
+        '[data-ai-exporter-role="user"] img[src]'
       ]
     },
 
@@ -188,32 +277,36 @@
       const step = Math.max(scroller.clientHeight * 0.75, 200);
       const deadline = Date.now() + MAX_SWEEP_MS;
 
+      // The app-shell layout pages older turns in without growing the
+      // (windowed) wrapper count, so scrollHeight is part of the
+      // "nothing new arrived" signature.
       collect();
       let stable = 0;
-      let lastWrappers = -1;
+      let lastSig = '';
       for (let i = 0; i < MAX_TICKS && stable < STABLE_TICKS_AT_TOP && Date.now() < deadline; i++) {
-        scroller.scrollTop = Math.max(0, scroller.scrollTop - step);
+        scroller.scrollTop = Math.max(scrollBounds(scroller).min, scroller.scrollTop - step);
         await sleep(SCROLL_DELAY_MS);
         const wrappers = collect();
-        if (scroller.scrollTop > 0) {
+        if (scroller.scrollTop > scrollBounds(scroller).min + 1) {
           stable = 0;
           continue;
         }
-        if (wrappers === lastWrappers) stable++;
-        else { stable = 0; lastWrappers = wrappers; }
+        const sig = wrappers + ':' + scroller.scrollHeight;
+        if (sig === lastSig) stable++;
+        else { stable = 0; lastSig = sig; }
       }
-      debugLog('pass A (up) done: wrappers =', lastWrappers, 'cached =', cache.turns.size);
+      debugLog('pass A (up) done: wrappers:scrollHeight =', lastSig, 'cached =', cache.turns.size);
 
-      let lastTop = -1;
+      let lastTop = NaN;
       for (let i = 0; i < MAX_TICKS && Date.now() < deadline; i++) {
-        if (scroller.scrollTop >= scroller.scrollHeight - scroller.clientHeight - 1) break;
+        if (scroller.scrollTop >= scrollBounds(scroller).max - 1) break;
         if (scroller.scrollTop === lastTop) break;
         lastTop = scroller.scrollTop;
         scroller.scrollTop = lastTop + step;
         await sleep(SCROLL_DELAY_MS);
         collect();
       }
-      scroller.scrollTop = scroller.scrollHeight;
+      scroller.scrollTop = scrollBounds(scroller).max;
       await sleep(SCROLL_DELAY_MS);
       collect();
       debugLog('pass B (down) done: cached =', cache.turns.size, 'ordered ids =', cache.order.length);
@@ -241,8 +334,8 @@
       }
 
       const liveById = new Map();
-      turnWrappers().forEach(w => {
-        liveById.set(w.getAttribute('data-turn-id-container'), sectionOf(w));
+      liveTurns().forEach(t => {
+        if (t.node) liveById.set(t.id, t);
       });
 
       const out = [];
@@ -251,11 +344,11 @@
       cache.order.forEach(id => {
         const live = liveById.get(id) || null;
         const cached = cache.turns.get(id);
-        if (cached && (!live || cached.size >= live.innerHTML.length)) {
+        if (cached && (!live || cached.size >= live.node.innerHTML.length)) {
           out.push(cached.el);
           fromCache++;
         } else if (live) {
-          out.push(live);
+          out.push(live.snapshot());
         } else {
           missing++;
         }
@@ -269,6 +362,10 @@
     },
 
     cleanResponseClone(clone) {
+      normalizeShellCode(clone);
+      clone.querySelectorAll('[data-markdown-copy="exclude"], button[aria-hidden="true"]')
+        .forEach(el => el.remove());
+
       clone.querySelectorAll(
         'button[aria-label*="Copy" i], button[aria-label*="复制" i], ' +
         '.copy-button, [data-testid="copy-turn-action-button"], ' +
@@ -323,6 +420,15 @@
     return `${el.tagName}${attrs} sh=${el.scrollHeight} ch=${el.clientHeight}`;
   }
 
+  // column-reverse scrollers (app-shell layout) keep scrollTop at 0 at the
+  // BOTTOM and go negative towards the top; normal ones run 0..range.
+  function scrollBounds(el) {
+    const range = Math.max(0, el.scrollHeight - el.clientHeight);
+    return getComputedStyle(el).flexDirection === 'column-reverse'
+      ? { min: -range, max: 0 }
+      : { min: 0, max: range };
+  }
+
   function isScrollable(el) {
     const s = getComputedStyle(el);
     return (s.overflowY === 'auto' || s.overflowY === 'scroll') &&
@@ -333,11 +439,15 @@
   // Prefer the site's own hook, then walk up from a live turn checking
   // overflowY - scrollHeight > clientHeight alone is true for <main> too.
   function findScroller() {
+    const shell = document.querySelector(SHELL_SCROLLER);
+    if (shell && isScrollable(shell)) return shell;
+
     const roots = [...document.querySelectorAll('[data-scroll-root]')];
     const root = roots.find(r => r.querySelector(TURN_WRAPPER) || r.querySelector(TURN_SECTION));
     if (root && isScrollable(root)) return root;
 
-    let el = document.querySelector(TURN_WRAPPER) || document.querySelector(TURN_SECTION);
+    let el = document.querySelector(SHELL_TURN) ||
+      document.querySelector(TURN_WRAPPER) || document.querySelector(TURN_SECTION);
     el = el && el.parentElement;
     while (el && el !== document.body) {
       if (isScrollable(el)) return el;
@@ -359,7 +469,148 @@
   }
 
   function liveSections() {
+    const shell = shellTurns();
+    if (shell.length > 0) return shell.map(normalizeShellTurn);
     return [...document.querySelectorAll(TURN_SECTION)];
+  }
+
+  function shellTurns() {
+    return [...document.querySelectorAll(SHELL_TURN)]
+      .filter(t => !(t.parentElement && t.parentElement.closest(SHELL_TURN)));
+  }
+
+  // One entry per turn currently in the DOM, whichever layout is live.
+  // `node` is null for a legacy placeholder; snapshot() returns the
+  // element the framework should read (a normalized clone for app-shell
+  // pairs, the live section for legacy turns).
+  function liveTurns() {
+    const shell = shellTurns();
+    if (shell.length > 0) {
+      return shell.map(t => ({
+        id: 'turn-key:' + t.getAttribute('data-turn-key'),
+        node: t,
+        snapshot: () => normalizeShellTurn(t)
+      }));
+    }
+    return turnWrappers().map(w => {
+      const section = sectionOf(w);
+      return {
+        id: w.getAttribute('data-turn-id-container'),
+        node: section,
+        snapshot: () => section
+      };
+    });
+  }
+
+  function firstIn(root, selectors) {
+    for (const sel of selectors) {
+      const el = root.querySelector(sel);
+      if (el) return el;
+    }
+    return null;
+  }
+
+  function allIn(root, selectors) {
+    for (const sel of selectors) {
+      const els = [...root.querySelectorAll(sel)].filter(Boolean);
+      if (els.length > 0) return els.filter(e => !els.some(o => o !== e && o.contains(e)));
+    }
+    return [];
+  }
+
+  // Block-level children become line breaks. Works on detached clones,
+  // where innerText has no layout to go on.
+  function textWithBreaks(el) {
+    let out = '';
+    el.childNodes.forEach(n => {
+      if (n.nodeType === Node.TEXT_NODE) {
+        out += n.textContent;
+      } else if (n.nodeName === 'BR') {
+        out += '\n';
+      } else if (n.nodeType === Node.ELEMENT_NODE) {
+        const inner = textWithBreaks(n);
+        if (/^(DIV|P|LI|H[1-6])$/.test(n.nodeName)) {
+          if (out && !out.endsWith('\n')) out += '\n';
+          out += inner + '\n';
+        } else {
+          out += inner;
+        }
+      }
+    });
+    return out;
+  }
+
+  // Flatten an app-shell user+assistant pair into one element with a
+  // single user node and a single assistant node (see header).
+  function normalizeShellTurn(turn) {
+    const out = document.createElement('section');
+    out.setAttribute('data-ai-exporter-turn', turn.getAttribute('data-turn-key') || '');
+
+    const bubble = firstIn(turn, SHELL_USER);
+    if (bubble) {
+      const user = document.createElement('div');
+      user.setAttribute('data-ai-exporter-role', 'user');
+      const source = bubble.querySelector('[data-search-result-target]') || bubble;
+      const text = document.createElement('div');
+      text.setAttribute('data-ai-exporter-text', '');
+      text.textContent = textWithBreaks(source).replace(/\n{3,}/g, '\n\n').trim();
+      user.appendChild(text);
+      bubble.querySelectorAll('img[src]').forEach(img => user.appendChild(img.cloneNode(true)));
+      out.appendChild(user);
+    }
+
+    const units = allIn(turn, SHELL_ASSISTANT);
+    if (units.length > 0) {
+      const model = document.createElement('div');
+      model.setAttribute('data-ai-exporter-role', 'assistant');
+      units.forEach(u => model.appendChild(u.cloneNode(true)));
+      stripShellWidgets(model);
+      out.appendChild(model);
+    }
+    return out;
+  }
+
+  // Rich replies (hotel / place cards, image strips, wide tables) put UI
+  // buttons with visible text ("Open image 1", "Add to Favorites") inside
+  // MarkdownRoot, and the photos themselves live INSIDE those buttons.
+  // Unwrap image buttons, drop the rest. Citation pills carry 32px site
+  // favicons that would otherwise be exported as pictures; the link text
+  // is kept. Done at harvest time so image extraction sees the same DOM.
+  function stripShellWidgets(root) {
+    root.querySelectorAll('[data-testid="chatgpt-citation"] img').forEach(img => img.remove());
+    root.querySelectorAll('button').forEach(btn => {
+      // A detached clone is never isConnected; check containment instead
+      // so buttons already removed with an ancestor are skipped.
+      if (!root.contains(btn)) return;
+      const imgs = [...btn.querySelectorAll('img[src]')];
+      if (imgs.length > 0) btn.replaceWith(...imgs);
+      else if (!btn.closest('[data-markdown-copy="code-block"]')) btn.remove();
+    });
+  }
+
+  // App-shell code blocks are <div>s with a <code> inside and a language
+  // header; inline code is a <span>. Rewrite both into the plain HTML
+  // turndown already knows how to fence.
+  function normalizeShellCode(root) {
+    root.querySelectorAll('[data-markdown-copy="code-block"]').forEach(block => {
+      const code = block.querySelector('code');
+      if (!code) return;
+      const header = block.querySelector('[data-markdown-copy="exclude"]');
+      const labelEl = header && (header.querySelector('.truncate') || header);
+      const label = labelEl ? labelEl.textContent.trim().toLowerCase() : '';
+      const lang = /^(plain ?text|text|)$/.test(label) ? '' : label.replace(/[^a-z0-9#+-]/g, '');
+      const pre = document.createElement('pre');
+      const out = document.createElement('code');
+      if (lang) out.className = 'language-' + lang;
+      out.textContent = code.textContent;
+      pre.appendChild(out);
+      block.replaceWith(pre);
+    });
+    root.querySelectorAll('span[data-markdown-copy="inline-code"]').forEach(span => {
+      const code = document.createElement('code');
+      code.textContent = span.textContent;
+      span.replaceWith(code);
+    });
   }
 
   function newCache() {
@@ -386,21 +637,20 @@
   // smaller state (images / KaTeX still rendering). Returns the wrapper
   // count so the caller can detect lazy history loading.
   function harvestInto(cache, onProgress) {
-    const wrappers = turnWrappers();
-    mergeOrder(cache.order, wrappers.map(w => w.getAttribute('data-turn-id-container')));
+    const wrappers = liveTurns();
+    mergeOrder(cache.order, wrappers.map(t => t.id));
     let captured = 0;
     let virtualized = 0;
-    wrappers.forEach(w => {
-      const id = w.getAttribute('data-turn-id-container');
-      const section = sectionOf(w);
-      if (!section) {
+    wrappers.forEach(t => {
+      if (!t.node) {
         virtualized++;
         return;
       }
-      const size = section.innerHTML.length;
-      const prev = cache.turns.get(id);
+      const size = t.node.innerHTML.length;
+      const prev = cache.turns.get(t.id);
       if (prev && prev.size >= size) return;
-      cache.turns.set(id, { size, el: section.cloneNode(true) });
+      const snap = t.snapshot();
+      cache.turns.set(t.id, { size, el: snap === t.node ? snap.cloneNode(true) : snap });
       captured++;
     });
     debugLog('collect tick - wrappers:', wrappers.length,
@@ -418,7 +668,8 @@
 
   if (window.__AIExporterTest) {
     window.__AIExporterChatGPTInternals = {
-      findScroller, turnWrappers, sectionOf, liveSections, harvestInto, mergeOrder, newCache, adapter
+      findScroller, scrollBounds, turnWrappers, sectionOf, liveSections, liveTurns,
+      normalizeShellTurn, normalizeShellCode, harvestInto, mergeOrder, newCache, adapter
     };
   }
 })();
