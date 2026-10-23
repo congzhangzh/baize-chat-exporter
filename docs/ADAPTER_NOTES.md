@@ -386,6 +386,34 @@ Adapters return bubble/turn objects with `images: [{ url, alt }]`.
 You don't need image-mode logic in the adapter — just return the URLs
 (blob: URLs are also fine; the framework handles them).
 
+### 9.1 Images inside the content block export twice
+
+The reply HTML goes through Turndown as-is, `<img>` included, and
+`generatedImages` is appended after it. When a `generatedImages`
+selector matches images that also sit inside `modelResponseContent`,
+every image lands in the Markdown twice, and the inline copy skips the
+inline / ZIP / remote-image options. Strip `<img>` from the clone in
+`cleanResponseClone` and let `generatedImages` carry them.
+
+Found 2026-10-23 in OpenWebUI (fixed there). Claude, HuggingChat and
+Kimi have the same selector shape and do not strip `<img>`; audit them
+against a live reply that contains an image.
+
+### 9.2 Code-block chrome leaks into the Markdown
+
+Sites wrap `<pre>` in a block with a header: a language label plus
+Copy / Run / Save buttons. Removing the Copy button is not enough; the
+label's text ends up as a stray line above the fence (`python`), or
+glued to the button text (`PythonCopy`). Four adapters have hit this:
+Grok, Kimi, ChatGPT and OpenWebUI. Two ways out:
+
+- **Known DOM**: a custom Turndown rule that emits the fence from the
+  block's label and `<pre>` (Grok, Kimi).
+- **DOM that varies between releases**: structural stripping, as in
+  OpenWebUI's `stripCodeBlockChrome()`: within the code block's
+  wrapper, drop short-text nodes that hold no content, and reuse the
+  label as the fence language.
+
 ---
 
 ## 10. Adding a new adapter — quick checklist
@@ -401,6 +429,8 @@ You don't need image-mode logic in the adapter — just return the URLs
       `collectTurns()` returning cached clones in accumulated order, and
       set `lastWarning` when some ids never materialized (see 4.4)
 - [ ] Two layers of fallback selectors minimum
+- [ ] Export a reply with an image and a code block: each image once,
+      no stray label above the fence (see 9.1, 9.2)
 - [ ] `debugLog()` covering panel + layer counts
 - [ ] Header comment with: anchor priority, failure history,
       virtualization notes (if relevant)

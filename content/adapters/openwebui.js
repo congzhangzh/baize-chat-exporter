@@ -8,9 +8,58 @@
 //
 // match() therefore always returns true: this script only runs
 // where popup has decided OpenWebUI is the right adapter.
+//
+// Offline fixture: demo/site/index.html follows these anchors. Serve it
+// on localhost, bind localhost to OpenWebUI in the popup, and export;
+// demo/record.py does exactly that to record docs/media/demo.*.
+//
+// Failure history:
+//   - 2026-10-23: every image in a reply exported twice. The <img> sat
+//     inside the content block, so Turndown emitted it, and
+//     generatedImages (.assistant-message img[src]) appended it again.
+//     Fix: strip <img> from the clone; generatedImages is the path that
+//     honours the inline / ZIP / remote-image options.
+//   - 2026-10-23: a stray "python" line above each code fence. The code
+//     block header (language label + Copy) is text beside the <pre>;
+//     only the Copy button was removed. Fix: stripCodeBlockChrome().
+//   Both found by the demo recording against the fixture, not on a live
+//   deployment: re-check against a real instance when one is at hand.
 // ============================================================
 
 (function () {
+  const CONTENT_TAGS = 'pre, code, img, p, li, ul, ol, table, blockquote, h1, h2, h3, h4, h5, h6';
+
+  // A code block renders as a <div> wrapper holding the <pre> plus a header
+  // (language label, Copy/Run/Save buttons) whose text otherwise leaks into
+  // the Markdown as a stray line above the fence. OpenWebUI's class names
+  // differ between releases, so the check is structural: inside the
+  // wrapper, drop short-text div/span nodes that hold no content. The
+  // wrapper is the highest div ancestor holding this one <pre> only, so a
+  // list item or paragraph next to the code is never touched. The label
+  // doubles as the fence language when <code> carries no language-* class.
+  function stripCodeBlockChrome(root) {
+    root.querySelectorAll('pre').forEach(pre => {
+      let block = null;
+      for (let el = pre.parentElement; el && el !== root && el.tagName === 'DIV'; el = el.parentElement) {
+        if (el.querySelectorAll('pre').length > 1) break;
+        block = el;
+      }
+      if (!block) return;
+      block.querySelectorAll('button').forEach(el => el.remove());
+      let label = '';
+      block.querySelectorAll('div, span').forEach(el => {
+        if (!block.contains(el) || el.contains(pre) || pre.contains(el)) return;
+        if (el.querySelector(CONTENT_TAGS)) return;
+        const text = el.textContent.trim();
+        if (text.length > 30) return;
+        if (!label && /^[\w+#.-]{1,20}$/.test(text)) label = text.toLowerCase();
+        el.remove();
+      });
+      const code = pre.querySelector('code') || pre;
+      if (label && !/\blanguage-/.test(code.className)) code.classList.add('language-' + label);
+    });
+  }
+
   const adapter = {
     id: 'openwebui',
     displayName: 'OpenWebUI',
@@ -77,6 +126,12 @@
         'button[title*="Copy" i], .copy-code-button, ' +
         'button[aria-label*="Copy" i], button[aria-label*="复制" i]'
       ).forEach(el => el.remove());
+
+      // generatedImages already collects these; left here, Turndown would
+      // emit each one a second time (see failure history).
+      clone.querySelectorAll('img').forEach(el => el.remove());
+
+      stripCodeBlockChrome(clone);
     },
 
     decorateModelLabel(modelEl) {
@@ -93,5 +148,9 @@
 
   if (window.__AIExporterRegistry) {
     window.__AIExporterRegistry.register(adapter);
+  }
+
+  if (window.__AIExporterTest) {
+    window.__AIExporterOpenWebUIInternals = { stripCodeBlockChrome, adapter };
   }
 })();
