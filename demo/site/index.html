@@ -1,0 +1,257 @@
+<!doctype html>
+<!--
+  Dummy self-hosted chat page for BaiZe demos and offline testing.
+
+  "Sandbox" is fictional; no real AI service is called. The conversation is
+  static HTML. The DOM follows the anchors the OpenWebUI adapter reads
+  (#messages-container, .message > .user-message / .assistant-message,
+  .message-content .markdown, data-model, header h1), so binding this
+  origin to the OpenWebUI adapter in the popup exports it like a real
+  self-hosted deployment. Keep those anchors in sync with
+  content/adapters/openwebui.js when either side changes.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monthly sign-up trend · Sandbox</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f766e'/%3E%3Cpath d='M9 21c3 3 11 3 14-2M10 12h.01M22 12h.01' stroke='white' stroke-width='3' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #ffffff;
+    --side: #f6f7f9;
+    --line: #e7e9ee;
+    --text: #1f2430;
+    --muted: #6b7280;
+    --accent: #0f766e;
+    --accent-soft: #e6f4f2;
+    --bubble: #f1f3f6;
+    --code-bg: #0f172a;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font: 15px/1.6 -apple-system, "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    display: flex;
+  }
+  aside {
+    width: 264px;
+    flex: none;
+    background: var(--side);
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    padding: 14px 12px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 14px; font-weight: 650; font-size: 16px; }
+  .logo {
+    width: 28px; height: 28px; border-radius: 8px; background: var(--accent);
+    display: grid; place-items: center; color: #fff; font-size: 15px;
+  }
+  .new-chat {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    border: 1px solid var(--line); background: #fff; border-radius: 10px;
+    padding: 9px 12px; font: inherit; color: var(--text); cursor: pointer;
+  }
+  .side-label { margin: 18px 8px 6px; font-size: 12px; color: var(--muted); font-weight: 600; }
+  nav a {
+    display: block; padding: 7px 10px; border-radius: 8px; color: var(--text);
+    text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px;
+  }
+  nav a:hover { background: #eceef2; }
+  nav a.active { background: #e3e6eb; font-weight: 550; }
+  .account { margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 10px 8px 2px; font-size: 14px; }
+  .avatar-me {
+    width: 30px; height: 30px; border-radius: 50%; background: #c7d2fe; color: #3730a3;
+    display: grid; place-items: center; font-weight: 700; font-size: 13px;
+  }
+  main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  header {
+    height: 56px; flex: none; display: flex; align-items: center; gap: 12px;
+    padding: 0 24px; border-bottom: 1px solid var(--line);
+  }
+  header h1 { font-size: 16px; font-weight: 600; margin: 0; }
+  .model-chip {
+    margin-left: auto; font-size: 13px; color: var(--accent); background: var(--accent-soft);
+    border-radius: 999px; padding: 4px 12px; font-weight: 550;
+  }
+  #messages-container { flex: 1; overflow-y: auto; scroll-behavior: auto; }
+  .thread { max-width: 780px; margin: 0 auto; padding: 28px 24px 40px; }
+  .message { margin-bottom: 30px; }
+  .user-message { display: flex; justify-content: flex-end; margin-bottom: 22px; }
+  .user-message .message-content {
+    background: var(--bubble); border-radius: 18px; padding: 10px 16px; max-width: 78%;
+  }
+  .assistant-message { display: flex; gap: 14px; }
+  .bot-avatar {
+    width: 30px; height: 30px; flex: none; border-radius: 50%; background: var(--accent);
+    color: #fff; display: grid; place-items: center; font-size: 14px; margin-top: 2px;
+  }
+  .assistant-message .message-content { min-width: 0; flex: 1; }
+  .model-name { font-size: 13px; color: var(--muted); font-weight: 600; margin-bottom: 2px; }
+  .markdown p { margin: 0 0 12px; }
+  .markdown ul { margin: 0 0 12px; padding-left: 22px; }
+  .markdown li { margin: 3px 0; }
+  .markdown table { border-collapse: collapse; margin: 4px 0 14px; font-size: 14px; }
+  .markdown th, .markdown td { border: 1px solid var(--line); padding: 6px 14px; text-align: right; }
+  .markdown th:first-child, .markdown td:first-child { text-align: left; }
+  .markdown th { background: #f8fafc; font-weight: 600; }
+  .markdown img { display: block; max-width: 100%; border: 1px solid var(--line); border-radius: 12px; margin: 6px 0 14px; }
+  .markdown blockquote {
+    margin: 0 0 12px; padding: 8px 16px; border-left: 4px solid var(--accent);
+    background: var(--accent-soft); border-radius: 0 10px 10px 0;
+  }
+  .markdown code { font-family: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace; font-size: 13px; }
+  .markdown :not(pre) > code { background: #eef0f3; border-radius: 5px; padding: 1px 5px; }
+  .code-block { border-radius: 12px; overflow: hidden; margin: 4px 0 14px; background: var(--code-bg); }
+  .code-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 12px; background: #1e293b; color: #cbd5e1; font-size: 12px;
+  }
+  .code-head button { background: none; border: 0; color: #cbd5e1; font: inherit; cursor: pointer; }
+  .code-block pre { margin: 0; padding: 14px 16px; overflow-x: auto; color: #e2e8f0; line-height: 1.55; }
+  .tok-k { color: #c4b5fd; }
+  .tok-s { color: #86efac; }
+  .tok-n { color: #fca5a5; }
+  .tok-c { color: #94a3b8; font-style: italic; }
+  .tok-f { color: #7dd3fc; }
+  .actions { display: flex; gap: 6px; margin-top: 2px; color: var(--muted); }
+  .actions button {
+    background: none; border: 0; padding: 4px; border-radius: 6px; color: inherit; cursor: pointer; font-size: 13px;
+  }
+  .actions button:hover { background: #f1f3f6; }
+  .composer-wrap { flex: none; padding: 0 24px 18px; }
+  .composer {
+    max-width: 780px; margin: 0 auto; display: flex; align-items: center; gap: 10px;
+    border: 1px solid var(--line); border-radius: 16px; padding: 10px 10px 10px 18px;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05); color: var(--muted);
+  }
+  .composer span { flex: 1; }
+  .send {
+    width: 34px; height: 34px; border-radius: 10px; border: 0; background: var(--accent);
+    color: #fff; display: grid; place-items: center; font-size: 16px;
+  }
+  .disclaimer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 8px; }
+</style>
+</head>
+<body>
+<aside>
+  <div class="brand"><div class="logo">&#9672;</div>Sandbox</div>
+  <button class="new-chat">&#xFF0B; New chat</button>
+  <div class="side-label">Today</div>
+  <nav>
+    <a href="#" class="active">Monthly sign-up trend</a>
+    <a href="#">Refactor the billing webhook</a>
+    <a href="#">Release notes for v2.4</a>
+  </nav>
+  <div class="side-label">Previous 7 days</div>
+  <nav>
+    <a href="#">Postgres index for slow query</a>
+    <a href="#">Onboarding email A/B test</a>
+    <a href="#">Explain vector embeddings</a>
+    <a href="#">Docker compose for staging</a>
+    <a href="#">Translate FAQ to Japanese</a>
+  </nav>
+  <div class="account"><div class="avatar-me">AL</div>Alex Lee</div>
+</aside>
+
+<main>
+  <header>
+    <h1>Monthly sign-up trend</h1>
+    <span class="model-chip">demo-llm-8b</span>
+  </header>
+
+  <div id="messages-container">
+    <div class="thread">
+
+      <div class="message" id="message-1">
+        <div class="user-message">
+          <div class="message-content">Here are our monthly sign-ups for January to June: 1,240 / 1,310 / 1,505 / 1,620 / 1,980 / 2,310. What's the trend? A chart would help.</div>
+        </div>
+        <div class="assistant-message" data-model="demo-llm-8b">
+          <div class="bot-avatar">&#9672;</div>
+          <div class="message-content">
+            <div class="model-name">demo-llm-8b</div>
+            <div class="markdown">
+              <p>Sign-ups grew every single month, and growth is <strong>accelerating</strong> in the second quarter.</p>
+              <table>
+                <thead><tr><th>Month</th><th>Sign-ups</th><th>vs. previous month</th></tr></thead>
+                <tbody>
+                  <tr><td>Jan</td><td>1,240</td><td>&mdash;</td></tr>
+                  <tr><td>Feb</td><td>1,310</td><td>+5.6%</td></tr>
+                  <tr><td>Mar</td><td>1,505</td><td>+14.9%</td></tr>
+                  <tr><td>Apr</td><td>1,620</td><td>+7.6%</td></tr>
+                  <tr><td>May</td><td>1,980</td><td>+22.2%</td></tr>
+                  <tr><td>Jun</td><td>2,310</td><td>+16.7%</td></tr>
+                </tbody>
+              </table>
+              <ul>
+                <li><strong>Total growth:</strong> +86.3% from January to June.</li>
+                <li><strong>Average monthly growth:</strong> about 13.2% (compound).</li>
+                <li><strong>Biggest jump:</strong> May, +22.2%. Worth checking what launched that month.</li>
+              </ul>
+              <img alt="Monthly sign-ups, January to June" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MjAiIGhlaWdodD0iMjYwIiB2aWV3Qm94PSIwIDAgNTIwIDI2MCIgZm9udC1mYW1pbHk9IkhlbHZldGljYSxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIj48cmVjdCB3aWR0aD0iNTIwIiBoZWlnaHQ9IjI2MCIgZmlsbD0iI2ZmZiIvPjxsaW5lIHgxPSI0NCIgeDI9IjUxMCIgeTE9IjIyOCIgeTI9IjIyOCIgc3Ryb2tlPSIjZTVlN2ViIi8+PHRleHQgeD0iMzgiIHk9IjIzMiIgdGV4dC1hbmNob3I9ImVuZCIgZmlsbD0iIzZiNzI4MCI+MDwvdGV4dD48bGluZSB4MT0iNDQiIHgyPSI1MTAiIHkxPSIxODciIHkyPSIxODciIHN0cm9rZT0iI2U1ZTdlYiIvPjx0ZXh0IHg9IjM4IiB5PSIxOTEiIHRleHQtYW5jaG9yPSJlbmQiIGZpbGw9IiM2YjcyODAiPjUwMDwvdGV4dD48bGluZSB4MT0iNDQiIHgyPSI1MTAiIHkxPSIxNDYiIHkyPSIxNDYiIHN0cm9rZT0iI2U1ZTdlYiIvPjx0ZXh0IHg9IjM4IiB5PSIxNTAiIHRleHQtYW5jaG9yPSJlbmQiIGZpbGw9IiM2YjcyODAiPjEwMDA8L3RleHQ+PGxpbmUgeDE9IjQ0IiB4Mj0iNTEwIiB5MT0iMTA2IiB5Mj0iMTA2IiBzdHJva2U9IiNlNWU3ZWIiLz48dGV4dCB4PSIzOCIgeT0iMTEwIiB0ZXh0LWFuY2hvcj0iZW5kIiBmaWxsPSIjNmI3MjgwIj4xNTAwPC90ZXh0PjxsaW5lIHgxPSI0NCIgeDI9IjUxMCIgeTE9IjY1IiB5Mj0iNjUiIHN0cm9rZT0iI2U1ZTdlYiIvPjx0ZXh0IHg9IjM4IiB5PSI2OSIgdGV4dC1hbmNob3I9ImVuZCIgZmlsbD0iIzZiNzI4MCI+MjAwMDwvdGV4dD48bGluZSB4MT0iNDQiIHgyPSI1MTAiIHkxPSIyNCIgeTI9IjI0IiBzdHJva2U9IiNlNWU3ZWIiLz48dGV4dCB4PSIzOCIgeT0iMjgiIHRleHQtYW5jaG9yPSJlbmQiIGZpbGw9IiM2YjcyODAiPjI1MDA8L3RleHQ+PHJlY3QgeD0iNTQiIHk9IjEyNyIgd2lkdGg9IjQ2IiBoZWlnaHQ9IjEwMSIgcng9IjQiIGZpbGw9IiM1ZWVhZDQiLz48dGV4dCB4PSI3NyIgeT0iMjQ4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMzc0MTUxIj5KYW48L3RleHQ+PHRleHQgeD0iNzciIHk9IjEyMSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzBmNzY2ZSIgZm9udC13ZWlnaHQ9ImJvbGQiPjEsMjQwPC90ZXh0PjxyZWN0IHg9IjEzNiIgeT0iMTIxIiB3aWR0aD0iNDYiIGhlaWdodD0iMTA3IiByeD0iNCIgZmlsbD0iIzVlZWFkNCIvPjx0ZXh0IHg9IjE1OSIgeT0iMjQ4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMzc0MTUxIj5GZWI8L3RleHQ+PHRleHQgeD0iMTU5IiB5PSIxMTUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiMwZjc2NmUiIGZvbnQtd2VpZ2h0PSJib2xkIj4xLDMxMDwvdGV4dD48cmVjdCB4PSIyMTgiIHk9IjEwNSIgd2lkdGg9IjQ2IiBoZWlnaHQ9IjEyMyIgcng9IjQiIGZpbGw9IiM1ZWVhZDQiLz48dGV4dCB4PSIyNDEiIHk9IjI0OCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzM3NDE1MSI+TWFyPC90ZXh0Pjx0ZXh0IHg9IjI0MSIgeT0iOTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiMwZjc2NmUiIGZvbnQtd2VpZ2h0PSJib2xkIj4xLDUwNTwvdGV4dD48cmVjdCB4PSIzMDAiIHk9Ijk2IiB3aWR0aD0iNDYiIGhlaWdodD0iMTMyIiByeD0iNCIgZmlsbD0iIzVlZWFkNCIvPjx0ZXh0IHg9IjMyMyIgeT0iMjQ4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMzc0MTUxIj5BcHI8L3RleHQ+PHRleHQgeD0iMzIzIiB5PSI5MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzBmNzY2ZSIgZm9udC13ZWlnaHQ9ImJvbGQiPjEsNjIwPC90ZXh0PjxyZWN0IHg9IjM4MiIgeT0iNjYiIHdpZHRoPSI0NiIgaGVpZ2h0PSIxNjIiIHJ4PSI0IiBmaWxsPSIjNWVlYWQ0Ii8+PHRleHQgeD0iNDA1IiB5PSIyNDgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiMzNzQxNTEiPk1heTwvdGV4dD48dGV4dCB4PSI0MDUiIHk9IjYwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMGY3NjZlIiBmb250LXdlaWdodD0iYm9sZCI+MSw5ODA8L3RleHQ+PHJlY3QgeD0iNDY0IiB5PSI0MCIgd2lkdGg9IjQ2IiBoZWlnaHQ9IjE4OCIgcng9IjQiIGZpbGw9IiM1ZWVhZDQiLz48dGV4dCB4PSI0ODciIHk9IjI0OCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzM3NDE1MSI+SnVuPC90ZXh0Pjx0ZXh0IHg9IjQ4NyIgeT0iMzQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiMwZjc2NmUiIGZvbnQtd2VpZ2h0PSJib2xkIj4yLDMxMDwvdGV4dD48cG9seWxpbmUgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGY3NjZlIiBzdHJva2Utd2lkdGg9IjIiIHBvaW50cz0iNzcsMTI3IDE1OSwxMjEgMjQxLDEwNSAzMjMsOTYgNDA1LDY2IDQ4Nyw0MCIvPjwvc3ZnPg==">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="message" id="message-2">
+        <div class="user-message">
+          <div class="message-content">Can you give me Python code to reproduce that chart?</div>
+        </div>
+        <div class="assistant-message" data-model="demo-llm-8b">
+          <div class="bot-avatar">&#9672;</div>
+          <div class="message-content">
+            <div class="model-name">demo-llm-8b</div>
+            <div class="markdown">
+              <p>Sure. This uses <code>matplotlib</code> only:</p>
+              <div class="code-block">
+                <div class="code-head"><span>python</span><button aria-label="Copy code">Copy</button></div>
+                <pre><code class="language-python"><span class="tok-k">import</span> matplotlib.pyplot <span class="tok-k">as</span> plt
+
+months = [<span class="tok-s">"Jan"</span>, <span class="tok-s">"Feb"</span>, <span class="tok-s">"Mar"</span>, <span class="tok-s">"Apr"</span>, <span class="tok-s">"May"</span>, <span class="tok-s">"Jun"</span>]
+signups = [<span class="tok-n">1240</span>, <span class="tok-n">1310</span>, <span class="tok-n">1505</span>, <span class="tok-n">1620</span>, <span class="tok-n">1980</span>, <span class="tok-n">2310</span>]
+
+fig, ax = plt.<span class="tok-f">subplots</span>(figsize=(<span class="tok-n">8</span>, <span class="tok-n">4</span>))
+ax.<span class="tok-f">bar</span>(months, signups, color=<span class="tok-s">"#5eead4"</span>)
+ax.<span class="tok-f">plot</span>(months, signups, color=<span class="tok-s">"#0f766e"</span>, marker=<span class="tok-s">"o"</span>)
+<span class="tok-k">for</span> m, n <span class="tok-k">in</span> <span class="tok-f">zip</span>(months, signups):
+    ax.<span class="tok-f">annotate</span>(<span class="tok-s">f"{n:,}"</span>, (m, n), ha=<span class="tok-s">"center"</span>, va=<span class="tok-s">"bottom"</span>)
+ax.<span class="tok-f">set_title</span>(<span class="tok-s">"Monthly sign-ups"</span>)
+plt.<span class="tok-f">show</span>()</code></pre>
+              </div>
+              <p>Swap <code>plt.show()</code> for <code>plt.savefig("signups.png", dpi=150)</code> to write a file instead.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="message" id="message-3">
+        <div class="user-message">
+          <div class="message-content">Give me a one-line summary for the weekly report.</div>
+        </div>
+        <div class="assistant-message" data-model="demo-llm-8b">
+          <div class="bot-avatar">&#9672;</div>
+          <div class="message-content">
+            <div class="model-name">demo-llm-8b</div>
+            <div class="markdown">
+              <blockquote><p>Sign-ups rose 86% from January to June (about 13% a month), with the strongest jump in May (+22%).</p></blockquote>
+            </div>
+            <div class="actions"><button aria-label="Copy">&#10697;</button><button aria-label="Regenerate">&#8635;</button></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="composer-wrap">
+    <div class="composer"><span>Message Sandbox&hellip;</span><button class="send" aria-label="Send">&#8593;</button></div>
+    <div class="disclaimer">Demo page. Nothing here talks to a real AI service.</div>
+  </div>
+</main>
+</body>
+</html>

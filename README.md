@@ -10,6 +10,25 @@ Originally born as *Gemini Chat Exporter* — the repo first lived at `sorry_gem
 
 ---
 
+## See it in action
+
+![BaiZe exporting a conversation from a dummy self-hosted chat page to Markdown](docs/media/demo.gif)
+
+Real Chrome, the real extension, a real export — only the chat site is a dummy. *Sandbox* ([`demo/site/`](demo/site/index.html)) is a fictional self-hosted assistant whose page follows the DOM the OpenWebUI adapter reads; no AI service is called. Full-quality video: [demo.mp4](docs/media/demo.mp4). Re-record it with `uv run demo/record.py` (needs Xvfb, ffmpeg and Chrome; see the script header).
+
+## BaiZe, animated
+
+The story of the name in four shots, generated with Gemini (Veo): BaiZe gathers what your AIs have said and hands it back to you as a document you own. Click a frame to play the clip (10 s, 1280×720, with sound).
+
+| | |
+|---|---|
+| [![Mist walk](docs/media/baize-01-mist-walk.jpg)](docs/media/baize-01-mist-walk.mp4) | [![Light vortex](docs/media/baize-02-light-vortex.jpg)](docs/media/baize-02-light-vortex.mp4) |
+| **1 · Mist walk** — BaiZe crosses its floating island among glowing chat bubbles | **2 · Light vortex** — the bubbles dissolve into streams of light around BaiZe |
+| [![Scroll to document](docs/media/baize-03-scroll-to-document.jpg)](docs/media/baize-03-scroll-to-document.mp4) | [![Knowledge returned](docs/media/baize-04-knowledge-returned.jpg)](docs/media/baize-04-knowledge-returned.mp4) |
+| **3 · Scroll to document** — the light becomes ink, the ink scroll a clean page | **4 · Knowledge returned** — the document settles into your hand |
+
+---
+
 ## Supported sites
 
 The thirteen sites below are the **supported and tested scenarios** today. Everything else — including the Chinese AI services in *Coming soon* — is planned and **community-owned**: see [CONTRIBUTING.md](CONTRIBUTING.md) and the issue templates.
@@ -115,6 +134,12 @@ popup/
 ├── popup.html                Export buttons + site-config panel
 └── popup.js                  Drives storage-backed bindings, dynamic
                               chrome.permissions.request() for new sites
+
+demo/
+├── site/index.html           Dummy self-hosted chat page (OpenWebUI-shaped
+│                             DOM); also an offline fixture for that adapter
+└── record.py                 Records docs/media/demo.* on a private Xvfb
+                              display: real Chrome + the unpacked extension
 ```
 
 ### Adapter interface (informal)
