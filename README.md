@@ -14,18 +14,31 @@ Originally born as *Gemini Chat Exporter* — the repo first lived at `sorry_gem
 
 ![BaiZe exporting a conversation from a dummy self-hosted chat page to Markdown](docs/media/demo.gif)
 
-Real Chrome, the real extension, a real export — only the chat site is a dummy. *Sandbox* ([`demo/site/`](demo/site/index.html)) is a fictional self-hosted assistant whose page follows the DOM the OpenWebUI adapter reads; no AI service is called. Full-quality video: [demo.mp4](docs/media/demo.mp4). Re-record it with `uv run demo/record.py` (needs Xvfb, ffmpeg and Chrome; see the script header).
+Real Chrome, the real extension, a real export — only the chat site is a dummy. *Sandbox* ([`demo/site/`](demo/site/index.html)) is a fictional self-hosted assistant whose page follows the DOM the OpenWebUI adapter reads; no AI service is called. Re-record it with `uv run demo/record.py` (needs Xvfb, ffmpeg and Chrome; see the script header); the source files are [`docs/media/demo.mp4`](docs/media/demo.mp4) and `demo.gif`.
+
+The same run as a full-quality video:
+
+https://github.com/user-attachments/assets/9bd4a1ec-9416-4110-bff1-c20052ee29d3
 
 ## BaiZe, animated
 
-The story of the name in four shots, generated with Gemini (Veo): BaiZe gathers what your AIs have said and hands it back to you as a document you own. Click a frame to play the clip (10 s, 1280×720, with sound).
+The story of the name in four shots, generated with Gemini (Veo): BaiZe gathers what your AIs have said and hands it back to you as a document you own. Each clip runs 10 s at 1280×720, with sound; the source files live in [`docs/media/`](docs/media/).
 
-| | |
-|---|---|
-| [![Mist walk](docs/media/baize-01-mist-walk.jpg)](docs/media/baize-01-mist-walk.mp4) | [![Light vortex](docs/media/baize-02-light-vortex.jpg)](docs/media/baize-02-light-vortex.mp4) |
-| **1 · Mist walk** — BaiZe crosses its floating island among glowing chat bubbles | **2 · Light vortex** — the bubbles dissolve into streams of light around BaiZe |
-| [![Scroll to document](docs/media/baize-03-scroll-to-document.jpg)](docs/media/baize-03-scroll-to-document.mp4) | [![Knowledge returned](docs/media/baize-04-knowledge-returned.jpg)](docs/media/baize-04-knowledge-returned.mp4) |
-| **3 · Scroll to document** — the light becomes ink, the ink scroll a clean page | **4 · Knowledge returned** — the document settles into your hand |
+**1 · Mist walk** — BaiZe crosses its floating island among glowing chat bubbles
+
+https://github.com/user-attachments/assets/16a1e98d-386d-4b53-8c85-5aafb64c0e61
+
+**2 · Light vortex** — the bubbles dissolve into streams of light around BaiZe
+
+https://github.com/user-attachments/assets/faa9a603-f390-454f-b650-ba6a52c84a2e
+
+**3 · Scroll to document** — the light becomes ink, the ink scroll a clean page
+
+https://github.com/user-attachments/assets/feb661d7-65a8-4bd0-bdc5-88ffff418a77
+
+**4 · Knowledge returned** — the document settles into your hand
+
+https://github.com/user-attachments/assets/df2edc83-3eb0-4730-b577-0b09ecfedfd5
 
 ---
 
