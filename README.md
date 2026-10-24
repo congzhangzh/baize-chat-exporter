@@ -261,7 +261,7 @@ The extension icon appears in the toolbar; pin it for one-click access. Firefox 
 
 ## Coming soon
 
-The framework already covers six sites. Additional adapters are intentionally added on demand — we'd rather ship two solid adapters than ten flaky ones. See [RELEASE_NOTES.md](RELEASE_NOTES.md) for the full per-site queue. Headline candidates:
+The framework already covers the thirteen sites above. Additional adapters are intentionally added on demand — we'd rather ship two solid adapters than ten flaky ones. See [RELEASE_NOTES.md](RELEASE_NOTES.md) for the full per-site queue. Headline candidates:
 
 - 中文圈：DeepSeek · 通义千问 · 文心一言 · 讯飞星火 · MiniMax（海螺已转型视频，聊天入口待确认）· 阶跃跃问 · 零一万物 · 百小应
 - 英文圈：Mistral Le Chat · Microsoft Copilot · Pi · Character.AI · Grok on X（`x.com/i/grok`，独立站 grok.com 已支持）
